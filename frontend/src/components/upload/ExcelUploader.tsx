@@ -179,6 +179,23 @@ export default function ExcelUploader({ onUpload, isLoading }: ExcelUploaderProp
           </div>
         </div>
       )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-xl">
+            <Loader2 className="h-12 w-12 animate-spin text-rugby-600" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-gray-900">
+                Procesando archivo
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Importando partidos y calculando puntuaciones...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
