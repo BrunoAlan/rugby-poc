@@ -44,6 +44,7 @@ docker compose up -d                             # Start PostgreSQL + pgAdmin
 - **Backend**: FastAPI, SQLAlchemy 2.0, PostgreSQL, Alembic, Pydantic
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS, React Query, React Router
 - **Data Processing**: pandas, openpyxl for Excel import
+- **PDF Generation**: reportlab for match report exports
 
 ### Data Flow
 1. Excel sheets (one per match) → `ExcelImporter` service → PostgreSQL
@@ -55,7 +56,7 @@ docker compose up -d                             # Start PostgreSQL + pgAdmin
 ```
 models/          # SQLAlchemy ORM models
 api/             # FastAPI route handlers
-services/        # Business logic (importer.py, scoring.py)
+services/        # Business logic (importer.py, scoring.py, pdf_generator.py)
 schemas/         # Pydantic request/response models
 cli/             # Typer CLI commands
 ```
@@ -81,6 +82,7 @@ pages/           # Route-level page components
 - `GET /api/stats/rankings?match_id=X` - Rankings (aggregated if no match_id)
 - `GET /api/matches/` - Match list
 - `POST /api/imports/excel` - Upload Excel file
+- `GET /api/exports/matches/{match_id}/pdf` - Download match report as PDF
 
 ## Database
 
@@ -118,3 +120,14 @@ See [docs/SCORING.md](docs/SCORING.md) for detailed documentation.
 score_absoluto = Σ (stat × weight)
 puntuacion_final = (score_absoluto / max(tiempo_juego, 40)) × 80
 ```
+
+## PDF Export
+
+Match reports can be downloaded as PDF from the match detail page. The report includes:
+- Match header (team, opponent, date, result)
+- AI analysis (parsed from markdown)
+- Player rankings table with scores and minutes played
+
+**Implementation:**
+- Backend: `PDFGeneratorService` in `services/pdf_generator.py` uses reportlab
+- Frontend: `PDFDownloadButton` component triggers download via `/api/exports/matches/{id}/pdf`
