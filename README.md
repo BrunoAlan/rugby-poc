@@ -79,10 +79,6 @@ uv run rugby seed-weights
 
 ## Database Access
 
-pgAdmin is available at http://localhost:5050
-- Email: admin@rugby.local
-- Password: admin123
-
 PostgreSQL connection:
 - Host: localhost
 - Port: 5432

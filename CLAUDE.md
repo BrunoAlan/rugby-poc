@@ -35,7 +35,7 @@ pnpm lint                                        # ESLint
 
 ### Docker
 ```bash
-docker compose up -d                             # Start PostgreSQL + pgAdmin
+docker compose up -d                             # Start PostgreSQL
 ```
 
 ## Architecture
