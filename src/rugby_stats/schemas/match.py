@@ -35,6 +35,7 @@ class Match(MatchBase):
     ai_analysis: str | None = None
     ai_analysis_generated_at: datetime | None = None
     ai_analysis_error: str | None = None
+    ai_analysis_status: str = "skipped"
     created_at: datetime
     updated_at: datetime
 

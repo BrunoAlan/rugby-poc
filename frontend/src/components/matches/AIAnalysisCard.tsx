@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Star,
   Lightbulb,
+  Loader2,
 } from 'lucide-react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import type { Match } from '../../types';
@@ -113,6 +114,42 @@ const markdownComponents: Components = {
 };
 
 export default function AIAnalysisCard({ match }: AIAnalysisCardProps) {
+  const isLoading = match.ai_analysis_status === 'pending' || match.ai_analysis_status === 'processing';
+
+  // Show loading state if AI analysis is being generated
+  if (isLoading) {
+    return (
+      <div className='card'>
+        <div className='flex items-center justify-between mb-4 pb-4 border-b border-gray-100'>
+          <div className='flex items-center gap-2'>
+            <div className='p-2 bg-purple-100 rounded-lg'>
+              <Sparkles className='h-5 w-5 text-purple-600' />
+            </div>
+            <div>
+              <h2 className='text-lg font-semibold text-gray-900'>
+                Analisis del Partido
+              </h2>
+              <span className='inline-flex items-center text-xs text-purple-600 font-medium'>
+                Powered by AI
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className='flex flex-col items-center justify-center py-12 gap-4'>
+          <Loader2 className='h-8 w-8 animate-spin text-purple-600' />
+          <div className='text-center'>
+            <p className='text-sm font-medium text-gray-700'>
+              {match.ai_analysis_status === 'pending' ? 'En cola para generacion...' : 'Generando analisis...'}
+            </p>
+            <p className='text-xs text-gray-500 mt-1'>
+              Esto puede demorar unos segundos
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Don't render if there's no analysis and no error
   if (!match.ai_analysis && !match.ai_analysis_error) {
     return null;

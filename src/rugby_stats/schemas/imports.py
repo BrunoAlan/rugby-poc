@@ -12,3 +12,4 @@ class UploadResult(BaseModel):
     sheets_processed: list[str]
     ai_analysis_generated: int = 0
     ai_analysis_errors: int = 0
+    ai_analysis_queued: int = 0

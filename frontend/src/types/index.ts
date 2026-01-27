@@ -1,4 +1,6 @@
 // Match types
+export type AIAnalysisStatus = 'pending' | 'processing' | 'completed' | 'error' | 'skipped';
+
 export interface Match {
   id: number;
   opponent_name: string;
@@ -13,6 +15,7 @@ export interface Match {
   ai_analysis: string | null;
   ai_analysis_generated_at: string | null;
   ai_analysis_error: string | null;
+  ai_analysis_status: AIAnalysisStatus;
   created_at: string;
   updated_at: string;
 }
@@ -203,6 +206,9 @@ export interface UploadResult {
   matches_created: number;
   stats_created: number;
   sheets_processed: string[];
+  ai_analysis_generated: number;
+  ai_analysis_errors: number;
+  ai_analysis_queued: number;
 }
 
 // API response types

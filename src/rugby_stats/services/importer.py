@@ -43,7 +43,12 @@ class ExcelImporter:
         self.import_batch_id = uuid4()
         self._created_matches: list[Match] = []
 
-    def import_file(self, file_path: str | Path, generate_ai_analysis: bool = False) -> dict:
+    def import_file(
+        self,
+        file_path: str | Path,
+        generate_ai_analysis: bool = False,
+        queue_ai_analysis: bool = False,
+    ) -> dict:
         """
         Import all sheets from an Excel file.
 
@@ -52,7 +57,8 @@ class ExcelImporter:
 
         Args:
             file_path: Path to the Excel file
-            generate_ai_analysis: Whether to generate AI analysis for each match
+            generate_ai_analysis: Whether to generate AI analysis for each match (synchronous)
+            queue_ai_analysis: Whether to queue AI analysis for background generation
 
         Returns:
             Dictionary with import statistics
@@ -75,6 +81,7 @@ class ExcelImporter:
             "sheets_processed": [],
             "ai_analysis_generated": 0,
             "ai_analysis_errors": 0,
+            "ai_analysis_queued": 0,
         }
 
         for sheet_name in sheet_names:
@@ -86,13 +93,23 @@ class ExcelImporter:
 
         self.db.commit()
 
-        # Generate AI analysis if requested
+        # Generate AI analysis if requested (synchronous)
         if generate_ai_analysis:
             ai_stats = self._generate_ai_analysis_for_matches()
             stats["ai_analysis_generated"] = ai_stats["generated"]
             stats["ai_analysis_errors"] = ai_stats["errors"]
+        # Queue AI analysis for background generation
+        elif queue_ai_analysis:
+            for match in self._created_matches:
+                match.ai_analysis_status = "pending"
+            self.db.commit()
+            stats["ai_analysis_queued"] = len(self._created_matches)
 
         return stats
+
+    def get_created_match_ids(self) -> list[int]:
+        """Return IDs of matches created during import."""
+        return [match.id for match in self._created_matches]
 
     def _generate_ai_analysis_for_matches(self) -> dict:
         """Generate AI analysis for all created matches."""

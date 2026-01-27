@@ -141,6 +141,11 @@ export default function ExcelUploader({ onUpload, isLoading }: ExcelUploaderProp
                 <li>Estadísticas creadas: {result.stats_created}</li>
                 <li>Hojas procesadas: {result.sheets_processed.join(', ')}</li>
               </ul>
+              {result.ai_analysis_queued > 0 && (
+                <p className="mt-3 text-sm text-purple-700 bg-purple-50 px-3 py-2 rounded-md">
+                  Generando análisis AI para {result.ai_analysis_queued} partido(s) en segundo plano...
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleClear}

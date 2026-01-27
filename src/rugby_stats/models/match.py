@@ -35,6 +35,9 @@ class Match(Base, TimestampMixin):
     ai_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_analysis_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ai_analysis_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    ai_analysis_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="skipped"
+    )  # pending, processing, completed, error, skipped
 
     # Relationships
     player_stats: Mapped[list["PlayerMatchStats"]] = relationship(

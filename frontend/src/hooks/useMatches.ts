@@ -21,6 +21,14 @@ export const useMatch = (id: number) => {
     queryKey: ['match', id],
     queryFn: () => matchesApi.getById(id),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Auto-refetch every 5 seconds while AI analysis is pending or processing
+      if (data?.ai_analysis_status === 'pending' || data?.ai_analysis_status === 'processing') {
+        return 5000;
+      }
+      return false;
+    },
   })
 }
 

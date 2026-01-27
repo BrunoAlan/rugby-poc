@@ -3,13 +3,14 @@
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from rugby_stats.config import get_settings
 from rugby_stats.database import get_db
 from rugby_stats.schemas.imports import UploadResult
+from rugby_stats.services.background_tasks import generate_ai_analysis_background
 from rugby_stats.services.importer import ExcelImporter
 from rugby_stats.services.scoring import ScoringService
 
@@ -20,6 +21,7 @@ settings = get_settings()
 
 @router.post("/upload", response_model=UploadResult)
 async def upload_excel(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     generate_ai: bool = True,
     db: Session = Depends(get_db),
@@ -53,15 +55,21 @@ async def upload_excel(
         scoring_service = ScoringService(db)
         scoring_service.seed_default_weights()
 
-        # Import data
+        # Import data with AI analysis queued for background processing
         importer = ExcelImporter(db)
+        should_generate_ai = generate_ai and settings.can_generate_ai_analysis
         stats = importer.import_file(
             tmp_path,
-            generate_ai_analysis=generate_ai and settings.can_generate_ai_analysis,
+            queue_ai_analysis=should_generate_ai,
         )
 
         # Recalculate scores
         scoring_service.recalculate_all_scores()
+
+        # Queue background AI analysis if enabled
+        if should_generate_ai and stats.get("ai_analysis_queued", 0) > 0:
+            match_ids = importer.get_created_match_ids()
+            background_tasks.add_task(generate_ai_analysis_background, match_ids)
 
         return UploadResult(
             players_created=stats["players_created"],
@@ -70,6 +78,7 @@ async def upload_excel(
             sheets_processed=stats["sheets_processed"],
             ai_analysis_generated=stats.get("ai_analysis_generated", 0),
             ai_analysis_errors=stats.get("ai_analysis_errors", 0),
+            ai_analysis_queued=stats.get("ai_analysis_queued", 0),
         )
 
     except FileNotFoundError as e:
