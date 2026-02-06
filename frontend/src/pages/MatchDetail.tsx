@@ -10,6 +10,7 @@ import AIAnalysisCard from '../components/matches/AIAnalysisCard'
 import RankingsTable from '../components/stats/RankingsTable'
 import PlayerStatsModal from '../components/players/PlayerStatsModal'
 import PDFDownloadButton from '../components/matches/PDFDownloadButton'
+import AnimatedPage from '../components/ui/AnimatedPage'
 import type { PlayerMatchStatsResponse, Player } from '../types'
 
 export default function MatchDetail() {
@@ -23,13 +24,11 @@ export default function MatchDetail() {
 
   const [selectedPlayerStats, setSelectedPlayerStats] = useState<PlayerMatchStatsResponse | null>(null)
 
-  // Create a map of player_id to player for quick lookup
   const playerMap = useMemo(() => {
     if (!players) return new Map<number, Player>()
     return new Map(players.map(p => [p.id, p]))
   }, [players])
 
-  // Create a map of player_name to stats for quick lookup
   const statsByPlayerName = useMemo(() => {
     if (!matchStats || !players) return new Map<string, PlayerMatchStatsResponse>()
     const map = new Map<string, PlayerMatchStatsResponse>()
@@ -56,9 +55,9 @@ export default function MatchDetail() {
   if (matchLoading) {
     return (
       <div className="space-y-6">
-        <div className="card animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
+        <div className="card">
+          <div className="skeleton h-8 w-1/3 rounded mb-4" />
+          <div className="skeleton h-4 w-1/4 rounded" />
         </div>
       </div>
     )
@@ -67,7 +66,7 @@ export default function MatchDetail() {
   if (!match) {
     return (
       <div className="card text-center py-12">
-        <p className="text-gray-500">Partido no encontrado</p>
+        <p className="text-dark-400">Partido no encontrado</p>
         <Link to="/matches" className="btn-primary mt-4">
           Volver a Partidos
         </Link>
@@ -76,12 +75,12 @@ export default function MatchDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Header with Back Link and PDF Download */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Link
           to="/matches"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Partidos
@@ -97,7 +96,7 @@ export default function MatchDetail() {
 
       {/* Stats Section */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-6">
           Rankings del Partido
         </h2>
         <RankingsTable
@@ -115,6 +114,6 @@ export default function MatchDetail() {
           onClose={handleCloseModal}
         />
       )}
-    </div>
+    </AnimatedPage>
   )
 }

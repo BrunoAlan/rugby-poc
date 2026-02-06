@@ -4,7 +4,6 @@ interface ComparisonStatsProps {
   summaries: PlayerSummary[]
 }
 
-// Stats organized by category
 const statCategories = {
   tackles: {
     label: 'Tackles',
@@ -44,21 +43,20 @@ const statCategories = {
   },
 }
 
-// Player colors matching ComparisonHeader
 const PLAYER_TEXT_COLORS = [
-  'text-rugby-600',
-  'text-blue-600',
-  'text-purple-600',
-  'text-amber-600',
-  'text-rose-600',
+  'text-primary-400',
+  'text-blue-400',
+  'text-purple-400',
+  'text-amber-400',
+  'text-rose-400',
 ]
 
 const PLAYER_BG_COLORS = [
-  'bg-rugby-50',
-  'bg-blue-50',
-  'bg-purple-50',
-  'bg-amber-50',
-  'bg-rose-50',
+  'bg-primary-500/10',
+  'bg-blue-500/10',
+  'bg-purple-500/10',
+  'bg-amber-500/10',
+  'bg-rose-500/10',
 ]
 
 function calculateAverages(matches: MatchStat[]): Record<string, number> {
@@ -86,10 +84,8 @@ function calculateAverages(matches: MatchStat[]): Record<string, number> {
 }
 
 export default function ComparisonStats({ summaries }: ComparisonStatsProps) {
-  // Calculate averages for each player
   const playerAverages = summaries.map(s => calculateAverages(s.matches))
 
-  // Find best value for each stat (for highlighting)
   const findBestIndex = (statKey: string, isPositive: boolean): number => {
     const values = playerAverages.map(avg => avg[statKey] || 0)
     if (isPositive) {
@@ -103,13 +99,13 @@ export default function ComparisonStats({ summaries }: ComparisonStatsProps) {
 
   return (
     <div className="card">
-      <h2 className="text-lg font-semibold text-gray-900 mb-6">
+      <h2 className="text-lg font-semibold text-white mb-6">
         Estadísticas Promedio por Partido
       </h2>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-dark-700/50">
+          <thead>
             <tr>
               <th className="table-header px-4 py-3 text-left">Estadística</th>
               {summaries.map((summary, index) => (
@@ -122,24 +118,22 @@ export default function ComparisonStats({ summaries }: ComparisonStatsProps) {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="divide-y divide-dark-700/30">
             {Object.entries(statCategories).map(([categoryKey, category]) => (
               <>
-                {/* Category Header */}
-                <tr key={categoryKey} className="bg-gray-50">
+                <tr key={categoryKey} className="bg-dark-900/40">
                   <td
                     colSpan={summaries.length + 1}
-                    className="px-4 py-2 text-sm font-semibold text-gray-700"
+                    className="px-4 py-2 text-sm font-semibold text-dark-300"
                   >
                     {category.label}
                   </td>
                 </tr>
-                {/* Stats in category */}
                 {category.stats.map(stat => {
                   const bestIndex = findBestIndex(stat.key, stat.positive)
                   return (
-                    <tr key={stat.key} className="hover:bg-gray-50">
-                      <td className="table-cell px-4 py-3 text-gray-600">
+                    <tr key={stat.key} className="hover:bg-dark-700/30">
+                      <td className="table-cell px-4 py-3 text-dark-300">
                         {stat.label}
                       </td>
                       {playerAverages.map((avg, index) => {
@@ -150,7 +144,7 @@ export default function ComparisonStats({ summaries }: ComparisonStatsProps) {
                             className={`table-cell px-4 py-3 text-center tabular-nums ${
                               isBest
                                 ? `font-bold ${PLAYER_TEXT_COLORS[index % PLAYER_TEXT_COLORS.length]} ${PLAYER_BG_COLORS[index % PLAYER_BG_COLORS.length]}`
-                                : 'text-gray-900'
+                                : 'text-gray-300'
                             }`}
                           >
                             {(avg[stat.key] || 0).toFixed(1)}

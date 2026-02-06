@@ -62,9 +62,9 @@ export default function WeightsTable({ weights, onUpdateWeight, isUpdating }: We
   const hasChanges = (weightId: number) => !!pendingChanges[weightId]
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="overflow-hidden rounded-lg border border-dark-700/50">
+      <table className="min-w-full divide-y divide-dark-700/50">
+        <thead>
           <tr>
             <th className="table-header px-4 py-3">Acción</th>
             <th className="table-header px-4 py-3 text-center">Peso Forwards</th>
@@ -72,14 +72,14 @@ export default function WeightsTable({ weights, onUpdateWeight, isUpdating }: We
             <th className="table-header px-4 py-3 w-24"></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
+        <tbody className="divide-y divide-dark-700/30">
           {weights.map((weight) => {
             const currentForwards = pendingChanges[weight.id]?.forwards_weight ?? weight.forwards_weight
             const currentBacks = pendingChanges[weight.id]?.backs_weight ?? weight.backs_weight
 
             return (
-              <tr key={weight.id} className="hover:bg-gray-50">
-                <td className="table-cell font-medium text-gray-900">
+              <tr key={weight.id} className="hover:bg-dark-700/30">
+                <td className="table-cell font-medium text-gray-200">
                   {ACTION_LABELS[weight.action_name] || weight.action_name}
                 </td>
                 <td className="table-cell text-center">

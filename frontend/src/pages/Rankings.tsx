@@ -4,6 +4,7 @@ import { useRankings } from '../hooks/useRankings'
 import { useMatches } from '../hooks/useMatches'
 import { useTeams } from '../hooks/useTeams'
 import RankingsTable from '../components/stats/RankingsTable'
+import AnimatedPage from '../components/ui/AnimatedPage'
 
 export default function Rankings() {
   const [matchFilter, setMatchFilter] = useState<number | undefined>(undefined)
@@ -29,13 +30,15 @@ export default function Rankings() {
   }, [matches])
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center gap-3">
-        <Trophy className="h-8 w-8 text-rugby-600" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+          <Trophy className="h-6 w-6 text-yellow-900" />
+        </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rankings</h1>
-          <p className="mt-1 text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Rankings</h1>
+          <p className="mt-1 text-dark-300">
             Clasificación de jugadores por puntuación
           </p>
         </div>
@@ -44,16 +47,15 @@ export default function Rankings() {
       {/* Filters */}
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Team Filter */}
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-dark-300 mb-2">
               Filtrar por Equipo
             </label>
             <select
               value={teamFilter || ''}
               onChange={(e) => {
                 setTeamFilter(e.target.value || undefined)
-                setMatchFilter(undefined) // Reset match filter when team changes
+                setMatchFilter(undefined)
               }}
               className="input"
             >
@@ -65,9 +67,8 @@ export default function Rankings() {
               ))}
             </select>
           </div>
-          {/* Match Filter */}
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-dark-300 mb-2">
               Filtrar por Partido
             </label>
             <select
@@ -91,6 +92,6 @@ export default function Rankings() {
       <div className="card">
         <RankingsTable rankings={rankings || []} loading={isLoading} />
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

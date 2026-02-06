@@ -3,61 +3,102 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-primary-50: 255 254 242;
+    --color-primary-100: 255 252 224;
+    --color-primary-200: 255 247 179;
+    --color-primary-300: 255 240 128;
+    --color-primary-400: 252 207 0;
+    --color-primary-500: 224 184 0;
+    --color-primary-600: 184 149 0;
+    --color-primary-700: 138 112 0;
+    --color-primary-800: 92 75 0;
+    --color-primary-900: 61 50 0;
+    --color-dark-700: 0 63 113;
+    --color-dark-800: 0 45 82;
+    --color-dark-900: 0 28 53;
+    --color-dark-950: 0 16 31;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-dark-900 text-gray-100 antialiased;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-primary {
-    @apply btn bg-rugby-600 text-white hover:bg-rugby-700 focus:ring-rugby-500;
+    @apply btn bg-gradient-to-r from-primary-500 to-primary-400 text-dark-900 hover:from-primary-400 hover:to-primary-300 focus:ring-primary-400 shadow-lg hover:shadow-glow-primary;
   }
 
   .btn-secondary {
-    @apply btn bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-400;
+    @apply btn bg-transparent text-gray-300 border border-dark-600 hover:border-primary-400 hover:text-primary-400 focus:ring-primary-400;
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-600 text-white hover:bg-red-500 focus:ring-red-500;
   }
 
   .card {
-    @apply rounded-xl bg-white p-6 shadow-sm border border-gray-100;
+    @apply rounded-xl bg-dark-800/80 backdrop-blur-sm p-6 shadow-card border border-dark-700/50;
   }
 
   .input {
-    @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-rugby-500 focus:outline-none focus:ring-1 focus:ring-rugby-500;
+    @apply block w-full rounded-lg border border-dark-600 bg-dark-900/80 px-3 py-2 text-sm text-gray-100 placeholder:text-dark-400 focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-400;
   }
 
   .table-header {
-    @apply bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500;
+    @apply bg-dark-900/60 text-left text-xs font-semibold uppercase tracking-widest text-primary-400;
   }
 
   .table-cell {
-    @apply whitespace-nowrap px-4 py-3 text-sm text-gray-700;
+    @apply whitespace-nowrap px-4 py-3 text-sm text-gray-300;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 to-primary-300 bg-clip-text text-transparent;
+  }
+
+  .stat-number {
+    @apply text-3xl font-black tabular-nums text-white;
   }
 }
 
-/* Custom scrollbar */
+/* Dark scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #001c35;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #003f71;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #0f5da0;
+}
+
+/* Shimmer skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #002d52 25%, #003f71 50%, #002d52 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }

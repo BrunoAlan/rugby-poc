@@ -4,11 +4,10 @@ import { usePlayerSummary } from '../hooks/usePlayers'
 import ComparisonHeader from '../components/players/ComparisonHeader'
 import ComparisonStats from '../components/players/ComparisonStats'
 import ComparisonChart from '../components/players/ComparisonChart'
+import AnimatedPage from '../components/ui/AnimatedPage'
 import type { PlayerSummary } from '../types'
 
-// Custom hook to fetch multiple player summaries in parallel
 function useMultiplePlayerSummaries(names: string[]) {
-  // Create individual queries for each player
   const queries = names.map(name => usePlayerSummary(name))
 
   const isLoading = queries.some(q => q.isLoading)
@@ -29,13 +28,13 @@ export default function PlayerCompare() {
       <div className="space-y-6">
         <Link
           to="/players"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Jugadores
         </Link>
         <div className="card text-center py-12">
-          <p className="text-gray-500">
+          <p className="text-dark-400">
             Selecciona al menos 2 jugadores para comparar.
           </p>
           <Link to="/players" className="btn-primary mt-4 inline-block">
@@ -51,19 +50,19 @@ export default function PlayerCompare() {
       <div className="space-y-6">
         <Link
           to="/players"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Jugadores
         </Link>
-        <div className="card animate-pulse">
+        <div className="card">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {playerNames.map((_, i) => (
-              <div key={i} className="p-4 bg-gray-50 rounded-lg">
-                <div className="h-6 w-32 bg-gray-200 rounded mb-4" />
+              <div key={i} className="p-4 bg-dark-900/40 rounded-lg">
+                <div className="skeleton h-6 w-32 rounded mb-4" />
                 <div className="space-y-2">
-                  <div className="h-4 w-24 bg-gray-200 rounded" />
-                  <div className="h-4 w-20 bg-gray-200 rounded" />
+                  <div className="skeleton h-4 w-24 rounded" />
+                  <div className="skeleton h-4 w-20 rounded" />
                 </div>
               </div>
             ))}
@@ -78,13 +77,13 @@ export default function PlayerCompare() {
       <div className="space-y-6">
         <Link
           to="/players"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Jugadores
         </Link>
         <div className="card text-center py-12">
-          <p className="text-gray-500">
+          <p className="text-dark-400">
             Error al cargar los datos de los jugadores.
           </p>
           <Link to="/players" className="btn-primary mt-4 inline-block">
@@ -96,11 +95,11 @@ export default function PlayerCompare() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Back Link */}
       <Link
         to="/players"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+        className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Volver a Jugadores
@@ -108,8 +107,8 @@ export default function PlayerCompare() {
 
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Comparación de Jugadores</h1>
-        <p className="mt-1 text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Comparación de Jugadores</h1>
+        <p className="mt-1 text-dark-300">
           Comparando {summaries.length} jugadores
         </p>
       </div>
@@ -122,6 +121,6 @@ export default function PlayerCompare() {
 
       {/* Evolution Chart */}
       <ComparisonChart summaries={summaries} />
-    </div>
+    </AnimatedPage>
   )
 }

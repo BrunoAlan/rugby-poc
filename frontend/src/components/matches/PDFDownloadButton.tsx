@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download, Loader2, AlertCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { downloadMatchPDF } from '../../api/exports'
 
 interface PDFDownloadButtonProps {
@@ -22,7 +23,6 @@ export default function PDFDownloadButton({ matchId }: PDFDownloadButtonProps) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Error al descargar el PDF'
       )
-      // Reset error state after 5 seconds
       setTimeout(() => {
         setStatus('idle')
         setErrorMessage(null)
@@ -32,18 +32,19 @@ export default function PDFDownloadButton({ matchId }: PDFDownloadButtonProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <button
+      <motion.button
         onClick={handleDownload}
         disabled={status === 'loading'}
+        whileTap={{ scale: 0.95 }}
         className={`
           inline-flex items-center gap-2 px-4 py-2 rounded-lg
-          text-sm font-medium transition-colors
+          text-sm font-medium transition-all duration-200
           ${
             status === 'error'
-              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
               : status === 'loading'
-              ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-              : 'bg-rugby-600 text-white hover:bg-rugby-700'
+              ? 'bg-dark-700 text-dark-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-primary-500 to-primary-400 text-dark-900 hover:from-primary-400 hover:to-primary-300 shadow-lg hover:shadow-glow-primary'
           }
         `}
       >
@@ -63,9 +64,9 @@ export default function PDFDownloadButton({ matchId }: PDFDownloadButtonProps) {
             Descargar Informe PDF
           </>
         )}
-      </button>
+      </motion.button>
       {errorMessage && (
-        <span className="text-sm text-red-600">{errorMessage}</span>
+        <span className="text-sm text-red-400">{errorMessage}</span>
       )}
     </div>
   )

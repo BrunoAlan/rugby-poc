@@ -4,9 +4,9 @@ import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePlayerSummary } from '../hooks/usePlayers'
 import PlayerSummaryComponent from '../components/players/PlayerSummary'
 import StatsChart from '../components/stats/StatsChart'
+import AnimatedPage from '../components/ui/AnimatedPage'
 import type { MatchStat } from '../types'
 
-// Stats organized by category
 const statCategories = {
   tackles: {
     label: 'Tackles',
@@ -52,7 +52,6 @@ interface ExpandableMatchRowProps {
   onToggle: () => void
 }
 
-// Date formatter for consistent localization
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   day: '2-digit',
   month: '2-digit',
@@ -75,7 +74,7 @@ function ExpandableMatchRow({ match, isExpanded, onToggle }: ExpandableMatchRowP
   return (
     <>
       <tr
-        className="hover:bg-gray-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rugby-500"
+        className="hover:bg-dark-700/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400"
         onClick={onToggle}
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -85,45 +84,45 @@ function ExpandableMatchRow({ match, isExpanded, onToggle }: ExpandableMatchRowP
         <td className="table-cell px-4 py-3">
           <div className="flex items-center gap-2">
             {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <ChevronDown className="h-4 w-4 text-dark-400" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <ChevronRight className="h-4 w-4 text-dark-400" />
             )}
             <Link
               to={`/matches/${match.match_id}`}
-              className="font-medium text-gray-900 hover:text-rugby-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rugby-500 focus-visible:ring-offset-1 rounded"
+              className="font-medium text-gray-200 hover:text-primary-400 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               vs {match.opponent}
             </Link>
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-rugby-100 text-rugby-700">
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-500/20 text-primary-400">
               {match.team}
             </span>
           </div>
         </td>
-        <td className="table-cell px-4 py-3 text-gray-500 tabular-nums">
+        <td className="table-cell px-4 py-3 text-dark-300 tabular-nums">
           {match.match_date ? dateFormatter.format(new Date(match.match_date)) : '-'}
         </td>
         <td className="table-cell px-4 py-3 text-center tabular-nums">#{match.puesto}</td>
         <td className="table-cell px-4 py-3 text-center tabular-nums">{match.tiempo_juego}'</td>
-        <td className="table-cell px-4 py-3 text-right font-semibold text-rugby-600 tabular-nums">
+        <td className="table-cell px-4 py-3 text-right font-semibold text-primary-400 tabular-nums">
           {(match.score || 0).toFixed(1)}
         </td>
       </tr>
       {isExpanded && (
-        <tr className="bg-gray-50">
+        <tr className="bg-dark-900/40">
           <td colSpan={5} className="px-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.entries(statCategories).map(([categoryKey, category]) => (
-                <div key={categoryKey} className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">
+                <div key={categoryKey} className="bg-dark-800/60 rounded-lg p-4 border border-dark-700/30">
+                  <h4 className="text-sm font-semibold text-primary-400 mb-3 border-b border-dark-700/30 pb-2">
                     {category.label}
                   </h4>
                   <div className="space-y-2">
                     {category.stats.map((stat) => (
                       <div key={stat.key} className="flex justify-between text-sm">
-                        <span className="text-gray-500">{stat.label}</span>
-                        <span className="font-medium text-gray-900 tabular-nums">
+                        <span className="text-dark-300">{stat.label}</span>
+                        <span className="font-medium text-gray-200 tabular-nums">
                           {(match as unknown as Record<string, number>)[stat.key] || 0}
                         </span>
                       </div>
@@ -161,12 +160,12 @@ export default function PlayerDetail() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="card animate-pulse">
+        <div className="card">
           <div className="flex items-center gap-6">
-            <div className="h-20 w-20 rounded-full bg-gray-200" />
+            <div className="h-20 w-20 rounded-full skeleton" />
             <div className="flex-1">
-              <div className="h-8 bg-gray-200 rounded w-1/3 mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-1/4" />
+              <div className="skeleton h-8 w-1/3 rounded mb-2" />
+              <div className="skeleton h-4 w-1/4 rounded" />
             </div>
           </div>
         </div>
@@ -177,15 +176,14 @@ export default function PlayerDetail() {
   if (!summary) {
     return (
       <div className="card text-center py-12">
-        <p className="text-gray-500">Jugador no encontrado</p>
-        <Link to="/players" className="btn-primary mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rugby-500 focus-visible:ring-offset-2">
+        <p className="text-dark-400">Jugador no encontrado</p>
+        <Link to="/players" className="btn-primary mt-4">
           Volver a Jugadores
         </Link>
       </div>
     )
   }
 
-  // Prepare chart data from match history
   const chartData = summary.matches.map((match) => ({
     name: `${match.opponent} (${match.team})`,
     value: match.score,
@@ -193,13 +191,13 @@ export default function PlayerDetail() {
   }))
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Back Link */}
       <Link
         to="/players"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rugby-500 focus-visible:ring-offset-1 rounded"
+        className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        <ArrowLeft className="h-4 w-4" />
         Volver a Jugadores
       </Link>
 
@@ -209,7 +207,7 @@ export default function PlayerDetail() {
       {/* Score Evolution Chart */}
       {chartData.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">
+          <h2 className="text-lg font-semibold text-white mb-6">
             Evolución de Puntuación
           </h2>
           <StatsChart data={chartData} type="line" height={300} />
@@ -219,21 +217,21 @@ export default function PlayerDetail() {
       {/* Match History */}
       <div className="card">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-white">
             Historial de Partidos
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-dark-400">
             Click en una fila para ver todas las estadísticas
           </p>
         </div>
         {summary.matches.length === 0 ? (
-          <p className="text-center py-8 text-gray-500">
+          <p className="text-center py-8 text-dark-400">
             No hay partidos registrados
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-dark-700/50">
+              <thead>
                 <tr>
                   <th className="table-header px-4 py-3">Rival</th>
                   <th className="table-header px-4 py-3">Fecha</th>
@@ -242,7 +240,7 @@ export default function PlayerDetail() {
                   <th className="table-header px-4 py-3 text-right">Puntuación</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-dark-700/30">
                 {summary.matches.map((match, idx) => (
                   <ExpandableMatchRow
                     key={match.match_id || idx}
@@ -256,6 +254,6 @@ export default function PlayerDetail() {
           </div>
         )}
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

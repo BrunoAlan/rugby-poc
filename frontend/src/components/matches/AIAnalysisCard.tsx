@@ -16,7 +16,6 @@ interface AIAnalysisCardProps {
   match: Match;
 }
 
-// Map section titles to icons and colors
 const sectionStyles: Record<
   string,
   {
@@ -28,33 +27,33 @@ const sectionStyles: Record<
 > = {
   'resumen general': {
     icon: <FileText className='h-4 w-4' />,
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    textColor: 'text-blue-700',
+    bgColor: 'bg-blue-900/20',
+    borderColor: 'border-blue-500/30',
+    textColor: 'text-blue-400',
   },
   'puntos fuertes': {
     icon: <ThumbsUp className='h-4 w-4' />,
-    bgColor: 'bg-green-50',
-    borderColor: 'border-green-200',
-    textColor: 'text-green-700',
+    bgColor: 'bg-green-900/20',
+    borderColor: 'border-green-500/30',
+    textColor: 'text-green-400',
   },
   'areas a mejorar': {
     icon: <AlertTriangle className='h-4 w-4' />,
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
-    textColor: 'text-amber-700',
+    bgColor: 'bg-amber-900/20',
+    borderColor: 'border-amber-500/30',
+    textColor: 'text-amber-400',
   },
   'jugadores destacados': {
     icon: <Star className='h-4 w-4' />,
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    textColor: 'text-purple-700',
+    bgColor: 'bg-purple-900/20',
+    borderColor: 'border-purple-500/30',
+    textColor: 'text-purple-400',
   },
   recomendaciones: {
     icon: <Lightbulb className='h-4 w-4' />,
-    bgColor: 'bg-cyan-50',
-    borderColor: 'border-cyan-200',
-    textColor: 'text-cyan-700',
+    bgColor: 'bg-cyan-900/20',
+    borderColor: 'border-cyan-500/30',
+    textColor: 'text-cyan-400',
   },
 };
 
@@ -70,9 +69,9 @@ function getSectionStyle(text: string) {
   }
   return {
     icon: <FileText className='h-4 w-4' />,
-    bgColor: 'bg-gray-50',
-    borderColor: 'border-gray-200',
-    textColor: 'text-gray-700',
+    bgColor: 'bg-dark-700/50',
+    borderColor: 'border-dark-600',
+    textColor: 'text-dark-300',
   };
 }
 
@@ -92,7 +91,7 @@ const markdownComponents: Components = {
     );
   },
   p: ({ children }) => (
-    <p className='text-sm text-gray-700 leading-relaxed mt-4 mb-4 px-2'>
+    <p className='text-sm text-gray-300 leading-relaxed mt-4 mb-4 px-2'>
       {children}
     </p>
   ),
@@ -103,45 +102,44 @@ const markdownComponents: Components = {
     <ol className='mt-4 mb-6 space-y-2 px-2'>{children}</ol>
   ),
   li: ({ children }) => (
-    <li className='text-sm text-gray-700 flex gap-3 leading-relaxed'>
-      <span className='text-rugby-500 flex-shrink-0'>•</span>
+    <li className='text-sm text-gray-300 flex gap-3 leading-relaxed'>
+      <span className='text-primary-500 flex-shrink-0'>•</span>
       <span className='flex-1'>{children}</span>
     </li>
   ),
   strong: ({ children }) => (
-    <strong className='font-semibold text-gray-900'>{children}</strong>
+    <strong className='font-semibold text-white'>{children}</strong>
   ),
 };
 
 export default function AIAnalysisCard({ match }: AIAnalysisCardProps) {
   const isLoading = match.ai_analysis_status === 'pending' || match.ai_analysis_status === 'processing';
 
-  // Show loading state if AI analysis is being generated
   if (isLoading) {
     return (
-      <div className='card'>
-        <div className='flex items-center justify-between mb-4 pb-4 border-b border-gray-100'>
+      <div className='card border-t-2 border-purple-500'>
+        <div className='flex items-center justify-between mb-4 pb-4 border-b border-dark-700/50'>
           <div className='flex items-center gap-2'>
-            <div className='p-2 bg-purple-100 rounded-lg'>
-              <Sparkles className='h-5 w-5 text-purple-600' />
+            <div className='p-2 bg-purple-500/20 rounded-lg'>
+              <Sparkles className='h-5 w-5 text-purple-400' />
             </div>
             <div>
-              <h2 className='text-lg font-semibold text-gray-900'>
+              <h2 className='text-lg font-semibold text-white'>
                 Analisis del Partido
               </h2>
-              <span className='inline-flex items-center text-xs text-purple-600 font-medium'>
+              <span className='inline-flex items-center text-xs text-purple-400 font-medium'>
                 Powered by AI
               </span>
             </div>
           </div>
         </div>
         <div className='flex flex-col items-center justify-center py-12 gap-4'>
-          <Loader2 className='h-8 w-8 animate-spin text-purple-600' />
+          <Loader2 className='h-8 w-8 animate-spin text-purple-400' />
           <div className='text-center'>
-            <p className='text-sm font-medium text-gray-700'>
+            <p className='text-sm font-medium text-gray-300'>
               {match.ai_analysis_status === 'pending' ? 'En cola para generacion...' : 'Generando analisis...'}
             </p>
-            <p className='text-xs text-gray-500 mt-1'>
+            <p className='text-xs text-dark-400 mt-1'>
               Esto puede demorar unos segundos
             </p>
           </div>
@@ -150,7 +148,6 @@ export default function AIAnalysisCard({ match }: AIAnalysisCardProps) {
     );
   }
 
-  // Don't render if there's no analysis and no error
   if (!match.ai_analysis && !match.ai_analysis_error) {
     return null;
   }
@@ -166,23 +163,23 @@ export default function AIAnalysisCard({ match }: AIAnalysisCardProps) {
     : null;
 
   return (
-    <div className='card'>
-      <div className='flex items-center justify-between mb-4 pb-4 border-b border-gray-100'>
+    <div className='card border-t-2 border-purple-500'>
+      <div className='flex items-center justify-between mb-4 pb-4 border-b border-dark-700/50'>
         <div className='flex items-center gap-2'>
-          <div className='p-2 bg-purple-100 rounded-lg'>
-            <Sparkles className='h-5 w-5 text-purple-600' />
+          <div className='p-2 bg-purple-500/20 rounded-lg'>
+            <Sparkles className='h-5 w-5 text-purple-400' />
           </div>
           <div>
-            <h2 className='text-lg font-semibold text-gray-900'>
+            <h2 className='text-lg font-semibold text-white'>
               Analisis del Partido
             </h2>
-            <span className='inline-flex items-center text-xs text-purple-600 font-medium'>
+            <span className='inline-flex items-center text-xs text-purple-400 font-medium'>
               Powered by AI
             </span>
           </div>
         </div>
         {generatedAt && (
-          <span className='flex items-center gap-1 text-xs text-gray-400'>
+          <span className='flex items-center gap-1 text-xs text-dark-400'>
             <Clock className='h-3 w-3' />
             {generatedAt}
           </span>
@@ -190,13 +187,13 @@ export default function AIAnalysisCard({ match }: AIAnalysisCardProps) {
       </div>
 
       {match.ai_analysis_error ? (
-        <div className='flex items-start gap-3 rounded-lg bg-red-50 p-4'>
-          <AlertCircle className='h-5 w-5 text-red-500 flex-shrink-0 mt-0.5' />
+        <div className='flex items-start gap-3 rounded-lg bg-red-500/10 border border-red-500/30 p-4'>
+          <AlertCircle className='h-5 w-5 text-red-400 flex-shrink-0 mt-0.5' />
           <div>
-            <p className='text-sm font-medium text-red-800'>
+            <p className='text-sm font-medium text-red-400'>
               Error al generar analisis
             </p>
-            <p className='text-sm text-red-700 mt-1'>
+            <p className='text-sm text-red-400/80 mt-1'>
               {match.ai_analysis_error}
             </p>
           </div>

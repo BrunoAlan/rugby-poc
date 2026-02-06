@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, X, GitCompare } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayersWithStats } from '../hooks/usePlayers'
+import AnimatedPage from '../components/ui/AnimatedPage'
 
 const POSITIONS = Array.from({ length: 15 }, (_, i) => i + 1)
 
@@ -17,7 +19,6 @@ export default function Players() {
 
     let result = [...players]
 
-    // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       result = result.filter((player) =>
@@ -25,12 +26,10 @@ export default function Players() {
       )
     }
 
-    // Apply position filter
     if (positionFilter !== null) {
       result = result.filter((player) => player.primary_position === positionFilter)
     }
 
-    // Sort by avg_score descending (best average first)
     return result.sort((a, b) => b.avg_score - a.avg_score)
   }, [players, searchTerm, positionFilter])
 
@@ -72,20 +71,19 @@ export default function Players() {
   const isSomeSelected = selectedPlayers.size > 0 && selectedPlayers.size < filteredPlayers.length
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Jugadores</h1>
-        <p className="mt-1 text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Jugadores</h1>
+        <p className="mt-1 text-dark-300">
           {players?.length || 0} jugadores registrados
         </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-dark-400" />
           <input
             type="text"
             placeholder="Buscar por nombre..."
@@ -95,7 +93,6 @@ export default function Players() {
           />
         </div>
 
-        {/* Position Filter */}
         <select
           value={positionFilter ?? ''}
           onChange={(e) => setPositionFilter(e.target.value ? Number(e.target.value) : null)}
@@ -113,24 +110,24 @@ export default function Players() {
       {/* Players Table */}
       {isLoading ? (
         <div className="card overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-dark-700/50">
+            <thead>
               <tr>
                 <th className="table-header px-4 py-3 w-12"></th>
                 <th className="table-header px-4 py-3">Jugador</th>
-                <th className="table-header px-4 py-3 text-center">Posición</th>
+                <th className="table-header px-4 py-3 text-center">Posicion</th>
                 <th className="table-header px-4 py-3 text-center">Partidos</th>
                 <th className="table-header px-4 py-3 text-right">Promedio</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-dark-700/30">
               {[...Array(6)].map((_, i) => (
-                <tr key={i} className="animate-pulse">
-                  <td className="table-cell px-4 py-3"><div className="h-4 w-4 bg-gray-200 rounded" /></td>
-                  <td className="table-cell px-4 py-3"><div className="h-4 w-32 bg-gray-200 rounded" /></td>
-                  <td className="table-cell px-4 py-3 text-center"><div className="h-4 w-8 bg-gray-200 rounded mx-auto" /></td>
-                  <td className="table-cell px-4 py-3 text-center"><div className="h-4 w-8 bg-gray-200 rounded mx-auto" /></td>
-                  <td className="table-cell px-4 py-3 text-right"><div className="h-4 w-12 bg-gray-200 rounded ml-auto" /></td>
+                <tr key={i}>
+                  <td className="table-cell px-4 py-3"><div className="skeleton h-4 w-4 rounded" /></td>
+                  <td className="table-cell px-4 py-3"><div className="skeleton h-4 w-32 rounded" /></td>
+                  <td className="table-cell px-4 py-3 text-center"><div className="skeleton h-4 w-8 rounded mx-auto" /></td>
+                  <td className="table-cell px-4 py-3 text-center"><div className="skeleton h-4 w-8 rounded mx-auto" /></td>
+                  <td className="table-cell px-4 py-3 text-right"><div className="skeleton h-4 w-12 rounded ml-auto" /></td>
                 </tr>
               ))}
             </tbody>
@@ -138,7 +135,7 @@ export default function Players() {
         </div>
       ) : filteredPlayers.length === 0 ? (
         <div className="card text-center py-12">
-          <p className="text-gray-500">
+          <p className="text-dark-400">
             {searchTerm || positionFilter !== null
               ? 'No se encontraron jugadores con los filtros aplicados'
               : 'No hay jugadores registrados'}
@@ -147,8 +144,8 @@ export default function Players() {
       ) : (
         <div className="card overflow-hidden p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-dark-700/50">
+              <thead>
                 <tr>
                   <th className="table-header px-4 py-3 w-12">
                     <input
@@ -158,46 +155,46 @@ export default function Players() {
                         if (el) el.indeterminate = isSomeSelected
                       }}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 text-rugby-600 focus:ring-rugby-500"
+                      className="h-4 w-4 rounded border-dark-600 bg-dark-900 text-primary-500 focus:ring-primary-400"
                     />
                   </th>
                   <th className="table-header px-4 py-3">Jugador</th>
-                  <th className="table-header px-4 py-3 text-center">Posición</th>
+                  <th className="table-header px-4 py-3 text-center">Posicion</th>
                   <th className="table-header px-4 py-3 text-center">Partidos</th>
                   <th className="table-header px-4 py-3 text-right">Promedio</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-dark-700/30">
                 {filteredPlayers.map((player) => {
                   const isSelected = selectedPlayers.has(player.id)
                   return (
                     <tr
                       key={player.id}
-                      className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-rugby-50' : ''}`}
+                      className={`hover:bg-dark-700/50 transition-colors ${isSelected ? 'bg-primary-900/30 border-l-2 border-primary-500' : ''}`}
                     >
                       <td className="table-cell px-4 py-3">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => togglePlayer(player.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-rugby-600 focus:ring-rugby-500"
+                          className="h-4 w-4 rounded border-dark-600 bg-dark-900 text-primary-500 focus:ring-primary-400"
                         />
                       </td>
                       <td className="table-cell px-4 py-3">
                         <Link
                           to={`/players/${encodeURIComponent(player.name)}`}
-                          className="font-medium text-gray-900 hover:text-rugby-600 transition-colors"
+                          className="font-medium text-gray-200 hover:text-primary-400 transition-colors"
                         >
                           {player.name}
                         </Link>
                       </td>
-                      <td className="table-cell px-4 py-3 text-center text-gray-600 tabular-nums">
+                      <td className="table-cell px-4 py-3 text-center text-dark-300 tabular-nums">
                         {player.primary_position ? `#${player.primary_position}` : '-'}
                       </td>
-                      <td className="table-cell px-4 py-3 text-center text-gray-600 tabular-nums">
+                      <td className="table-cell px-4 py-3 text-center text-dark-300 tabular-nums">
                         {player.matches_played}
                       </td>
-                      <td className="table-cell px-4 py-3 text-right font-semibold text-rugby-600 tabular-nums">
+                      <td className="table-cell px-4 py-3 text-right font-semibold text-primary-400 tabular-nums">
                         {player.avg_score.toFixed(1)}
                       </td>
                     </tr>
@@ -210,28 +207,36 @@ export default function Players() {
       )}
 
       {/* Floating Action Bar */}
-      {selectedPlayers.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 px-4 py-3 flex items-center gap-4 z-50">
-          <span className="text-sm text-gray-600">
-            {selectedPlayers.size} jugador{selectedPlayers.size !== 1 ? 'es' : ''} seleccionado{selectedPlayers.size !== 1 ? 's' : ''}
-          </span>
-          <button
-            onClick={clearSelection}
-            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+      <AnimatePresence>
+        {selectedPlayers.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-dark-800/95 backdrop-blur-md rounded-lg shadow-lg border border-dark-700/50 px-4 py-3 flex items-center gap-4 z-50"
           >
-            <X className="h-4 w-4" />
-            Limpiar
-          </button>
-          <button
-            onClick={handleCompare}
-            disabled={selectedPlayers.size < 2}
-            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <GitCompare className="h-4 w-4" />
-            Comparar
-          </button>
-        </div>
-      )}
-    </div>
+            <span className="text-sm text-dark-300">
+              {selectedPlayers.size} jugador{selectedPlayers.size !== 1 ? 'es' : ''} seleccionado{selectedPlayers.size !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={clearSelection}
+              className="inline-flex items-center gap-1 text-sm text-dark-400 hover:text-white transition-colors"
+            >
+              <X className="h-4 w-4" />
+              Limpiar
+            </button>
+            <button
+              onClick={handleCompare}
+              disabled={selectedPlayers.size < 2}
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <GitCompare className="h-4 w-4" />
+              Comparar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </AnimatedPage>
   )
 }

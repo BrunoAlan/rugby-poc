@@ -32,12 +32,12 @@ export default function StatsChart({
   dataKey = 'value',
   xAxisKey = 'name',
   height = 300,
-  color = '#16a34a',
+  color = '#fccf00',
 }: StatsChartProps) {
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-gray-500"
+        className="flex items-center justify-center text-dark-400"
         style={{ height }}
       >
         No hay datos para mostrar
@@ -45,27 +45,28 @@ export default function StatsChart({
     )
   }
 
+  const tooltipStyle = {
+    backgroundColor: '#002d52',
+    border: '1px solid #003f71',
+    borderRadius: '8px',
+    color: '#e5e7eb',
+  }
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       {type === 'line' ? (
         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#003f71" />
           <XAxis
             dataKey={xAxisKey}
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            tickLine={{ stroke: '#e5e7eb' }}
+            tick={{ fill: '#7ab3eb', fontSize: 12 }}
+            tickLine={{ stroke: '#003f71' }}
           />
           <YAxis
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            tickLine={{ stroke: '#e5e7eb' }}
+            tick={{ fill: '#7ab3eb', fontSize: 12 }}
+            tickLine={{ stroke: '#003f71' }}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-            }}
-          />
+          <Tooltip contentStyle={tooltipStyle} />
           <Line
             type="monotone"
             dataKey={dataKey}
@@ -77,24 +78,18 @@ export default function StatsChart({
         </LineChart>
       ) : (
         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#003f71" />
           <XAxis
             dataKey={xAxisKey}
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            tickLine={{ stroke: '#e5e7eb' }}
+            tick={{ fill: '#7ab3eb', fontSize: 12 }}
+            tickLine={{ stroke: '#003f71' }}
           />
           <YAxis
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            tickLine={{ stroke: '#e5e7eb' }}
+            tick={{ fill: '#7ab3eb', fontSize: 12 }}
+            tickLine={{ stroke: '#003f71' }}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-            }}
-          />
-          <Legend />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend wrapperStyle={{ color: '#7ab3eb' }} />
           <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
         </BarChart>
       )}

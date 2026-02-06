@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import type { PlayerMatchStatsResponse, Player } from '../../types'
 
 interface PlayerStatsModalProps {
@@ -15,23 +16,29 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="relative bg-dark-800 border border-dark-700/50 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-dark-800 border-b border-dark-700/50 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{playerName}</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-xl font-bold text-white">{playerName}</h2>
+            <p className="text-sm text-dark-300">
               Puesto: #{stats.puesto} | Tiempo: {stats.tiempo_juego} min
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -42,7 +49,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
           <div className="grid grid-cols-2 gap-6">
             {/* Tackles */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3 border-b pb-1">
+              <h3 className="text-sm font-semibold text-primary-400 uppercase tracking-wider mb-3 border-b border-dark-700/50 pb-1">
                 Tackles
               </h3>
               <dl className="space-y-2">
@@ -54,7 +61,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
 
             {/* Ataque */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3 border-b pb-1">
+              <h3 className="text-sm font-semibold text-primary-400 uppercase tracking-wider mb-3 border-b border-dark-700/50 pb-1">
                 Ataque
               </h3>
               <dl className="space-y-2">
@@ -67,7 +74,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
 
             {/* Pases */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3 border-b pb-1">
+              <h3 className="text-sm font-semibold text-primary-400 uppercase tracking-wider mb-3 border-b border-dark-700/50 pb-1">
                 Pases
               </h3>
               <dl className="space-y-2">
@@ -78,7 +85,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
 
             {/* Otros */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3 border-b pb-1">
+              <h3 className="text-sm font-semibold text-primary-400 uppercase tracking-wider mb-3 border-b border-dark-700/50 pb-1">
                 Otros
               </h3>
               <dl className="space-y-2">
@@ -94,10 +101,10 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
           </div>
 
           {/* Score Section */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 pt-4 border-t border-dark-700/50">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Puntuación Final:</span>
-              <span className="text-2xl font-bold text-rugby-600">
+              <span className="text-sm text-dark-300">Puntuación Final:</span>
+              <span className="text-3xl font-black text-primary-400">
                 {stats.puntuacion_final?.toFixed(2) ?? '-'}
               </span>
             </div>
@@ -105,7 +112,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+        <div className="border-t border-dark-700/50 px-6 py-4 bg-dark-900/40">
           <Link
             to={`/players/${encodeURIComponent(playerName)}`}
             className="btn-primary w-full text-center"
@@ -113,7 +120,7 @@ export default function PlayerStatsModal({ stats, player, onClose }: PlayerStats
             Ver perfil completo
           </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -126,13 +133,13 @@ interface StatRowProps {
 }
 
 function StatRow({ label, value, highlight, negative }: StatRowProps) {
-  let valueClass = 'text-gray-900'
-  if (highlight && value > 0) valueClass = 'text-green-600 font-semibold'
-  if (negative && value > 0) valueClass = 'text-red-600'
+  let valueClass = 'text-gray-200'
+  if (highlight && value > 0) valueClass = 'text-green-400 font-semibold'
+  if (negative && value > 0) valueClass = 'text-red-400'
 
   return (
     <div className="flex justify-between">
-      <dt className="text-sm text-gray-500">{label}</dt>
+      <dt className="text-sm text-dark-300">{label}</dt>
       <dd className={`text-sm font-medium ${valueClass}`}>{value}</dd>
     </div>
   )
