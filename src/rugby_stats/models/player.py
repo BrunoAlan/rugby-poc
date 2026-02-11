@@ -1,8 +1,9 @@
 """Player model."""
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from rugby_stats.models.base import Base, TimestampMixin
@@ -18,6 +19,15 @@ class Player(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+
+    # AI Evolution Analysis (cached)
+    ai_evolution_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_evolution_analysis_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )  # pending, processing, completed, error
+    ai_evolution_analysis_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    ai_evolution_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ai_evolution_match_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
     match_stats: Mapped[list["PlayerMatchStats"]] = relationship(
