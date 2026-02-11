@@ -8,6 +8,7 @@ from rugby_stats.schemas.player import (
     PlayerSummary,
     PlayerWithStats,
     PlayerWithStatsList,
+    PositionComparison,
     StatAnomaly,
 )
 from rugby_stats.schemas.match import Match, MatchCreate, MatchList
@@ -32,6 +33,7 @@ __all__ = [
     "PlayerSummary",
     "PlayerWithStats",
     "PlayerWithStatsList",
+    "PositionComparison",
     "StatAnomaly",
     "Match",
     "MatchCreate",

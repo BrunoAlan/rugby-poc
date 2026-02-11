@@ -107,3 +107,12 @@ class PlayerAnomalies(BaseModel):
     player_id: int
     player_name: str
     anomalies: dict[str, StatAnomaly]
+
+
+class PositionComparison(BaseModel):
+    """Comparison of player averages vs position group averages."""
+
+    player_id: int
+    player_name: str
+    position_group: str  # "forwards" or "backs"
+    stats: dict[str, dict]

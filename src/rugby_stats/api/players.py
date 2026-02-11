@@ -15,6 +15,7 @@ from rugby_stats.schemas import (
     PlayerSummary,
     PlayerWithStats,
     PlayerWithStatsList,
+    PositionComparison,
 )
 from rugby_stats.services.anomaly_detection import AnomalyDetectionService
 from rugby_stats.services.scoring import ScoringService
@@ -105,6 +106,74 @@ def get_player_anomalies(
         player_id=player.id,
         player_name=player.name,
         anomalies=anomalies,
+    )
+
+
+@router.get("/{player_id}/position-comparison", response_model=PositionComparison)
+def get_position_comparison(
+    player_id: int,
+    db: Session = Depends(get_db),
+):
+    """Compare player averages vs their position group averages."""
+    from rugby_stats.models import PlayerMatchStats
+
+    player = db.query(PlayerModel).filter(PlayerModel.id == player_id).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    player_stats = player.match_stats
+    if not player_stats:
+        raise HTTPException(status_code=404, detail="No stats found for player")
+
+    # Determine position group from most common position
+    positions = [s.puesto for s in player_stats if s.puesto]
+    if not positions:
+        raise HTTPException(status_code=404, detail="No position data for player")
+
+    most_common_pos = Counter(positions).most_common(1)[0][0]
+    is_forward = 1 <= most_common_pos <= 8
+    position_group = "forwards" if is_forward else "backs"
+
+    # Get all stats for same position group (all players)
+    if is_forward:
+        group_stats = db.query(PlayerMatchStats).filter(
+            PlayerMatchStats.puesto.between(1, 8)
+        ).all()
+    else:
+        group_stats = db.query(PlayerMatchStats).filter(
+            PlayerMatchStats.puesto.between(9, 15)
+        ).all()
+
+    stat_fields = [
+        "tackles_positivos", "tackles", "tackles_errados", "portador",
+        "ruck_ofensivos", "pases", "pases_malos", "perdidas",
+        "recuperaciones", "gana_contacto", "quiebres", "penales",
+        "juego_pie", "recepcion_aire_buena", "recepcion_aire_mala", "try_",
+    ]
+
+    stats_comparison = {}
+    for field in stat_fields:
+        player_values = [getattr(s, field, 0) or 0 for s in player_stats]
+        group_values = [getattr(s, field, 0) or 0 for s in group_stats]
+
+        player_avg = sum(player_values) / len(player_values) if player_values else 0
+        group_avg = sum(group_values) / len(group_values) if group_values else 0
+
+        diff_pct = 0.0
+        if group_avg > 0:
+            diff_pct = round(((player_avg - group_avg) / group_avg) * 100, 1)
+
+        stats_comparison[field] = {
+            "player_avg": round(player_avg, 1),
+            "group_avg": round(group_avg, 1),
+            "difference_pct": diff_pct,
+        }
+
+    return PositionComparison(
+        player_id=player.id,
+        player_name=player.name,
+        position_group=position_group,
+        stats=stats_comparison,
     )
 
 
