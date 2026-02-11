@@ -80,7 +80,7 @@ export default function Rankings() {
               {sortedMatches.map((match) => (
                 <option key={match.id} value={match.id}>
                   vs {match.opponent_name}
-                  {match.match_date && ` - ${new Date(match.match_date).toLocaleDateString('es-ES')}`}
+                  {match.match_date && ` - ${new Date(match.match_date + 'T12:00:00').toLocaleDateString('es-ES')}`}
                 </option>
               ))}
             </select>

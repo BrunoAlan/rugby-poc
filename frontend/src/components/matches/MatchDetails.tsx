@@ -8,7 +8,7 @@ interface MatchDetailsProps {
 
 export default function MatchDetails({ match }: MatchDetailsProps) {
   const matchDate = match.match_date
-    ? new Date(match.match_date).toLocaleDateString('es-ES', {
+    ? new Date(match.match_date + 'T12:00:00').toLocaleDateString('es-ES', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',

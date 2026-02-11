@@ -10,7 +10,7 @@ interface MatchCardProps {
 
 export default function MatchCard({ match }: MatchCardProps) {
   const matchDate = match.match_date
-    ? new Date(match.match_date).toLocaleDateString('es-ES', {
+    ? new Date(match.match_date + 'T12:00:00').toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',

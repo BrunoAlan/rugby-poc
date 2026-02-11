@@ -297,11 +297,18 @@ class ExcelImporter:
         # Try to parse string formats
         if isinstance(value, str):
             value = value.strip()
-            for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"]:
+            for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d-%m-%y"]:
                 try:
                     return datetime.strptime(value, fmt).date()
                 except ValueError:
                     continue
+
+        # Handle numeric values (Excel serial dates)
+        if isinstance(value, (int, float)):
+            try:
+                return (pd.Timestamp("1899-12-30") + pd.Timedelta(days=int(value))).date()
+            except Exception:
+                pass
 
         return None
 

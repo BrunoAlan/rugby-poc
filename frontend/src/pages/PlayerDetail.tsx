@@ -101,7 +101,7 @@ function ExpandableMatchRow({ match, isExpanded, onToggle }: ExpandableMatchRowP
           </div>
         </td>
         <td className="table-cell px-4 py-3 text-dark-300 tabular-nums">
-          {match.match_date ? dateFormatter.format(new Date(match.match_date)) : '-'}
+          {match.match_date ? dateFormatter.format(new Date(match.match_date + 'T12:00:00')) : '-'}
         </td>
         <td className="table-cell px-4 py-3 text-center tabular-nums">#{match.puesto}</td>
         <td className="table-cell px-4 py-3 text-center tabular-nums">{match.tiempo_juego}'</td>
@@ -187,7 +187,7 @@ export default function PlayerDetail() {
   const chartData = summary.matches.map((match) => ({
     name: `${match.opponent} (${match.team})`,
     value: match.score,
-    date: match.match_date ? shortDateFormatter.format(new Date(match.match_date)) : '-',
+    date: match.match_date ? shortDateFormatter.format(new Date(match.match_date + 'T12:00:00')) : '-',
   }))
 
   return (
