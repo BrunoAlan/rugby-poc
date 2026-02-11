@@ -88,3 +88,22 @@ class PlayerWithStatsList(BaseModel):
 
     items: list[PlayerWithStats]
     total: int
+
+
+class StatAnomaly(BaseModel):
+    """Anomaly data for a single stat."""
+
+    median_all: float
+    median_recent: float
+    last_value: int
+    deviation_pct: float
+    alert: str | None = None
+    threshold: int
+
+
+class PlayerAnomalies(BaseModel):
+    """Anomaly detection results for a player."""
+
+    player_id: int
+    player_name: str
+    anomalies: dict[str, StatAnomaly]

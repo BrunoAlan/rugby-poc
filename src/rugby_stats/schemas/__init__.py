@@ -2,11 +2,13 @@
 
 from rugby_stats.schemas.player import (
     Player,
+    PlayerAnomalies,
     PlayerCreate,
     PlayerList,
     PlayerSummary,
     PlayerWithStats,
     PlayerWithStatsList,
+    StatAnomaly,
 )
 from rugby_stats.schemas.match import Match, MatchCreate, MatchList
 from rugby_stats.schemas.player_stats import (
@@ -24,11 +26,13 @@ from rugby_stats.schemas.scoring import (
 
 __all__ = [
     "Player",
+    "PlayerAnomalies",
     "PlayerCreate",
     "PlayerList",
     "PlayerSummary",
     "PlayerWithStats",
     "PlayerWithStatsList",
+    "StatAnomaly",
     "Match",
     "MatchCreate",
     "MatchList",

@@ -9,12 +9,14 @@ from rugby_stats.database import get_db
 from rugby_stats.models import Player as PlayerModel
 from rugby_stats.schemas import (
     Player,
+    PlayerAnomalies,
     PlayerCreate,
     PlayerList,
     PlayerSummary,
     PlayerWithStats,
     PlayerWithStatsList,
 )
+from rugby_stats.services.anomaly_detection import AnomalyDetectionService
 from rugby_stats.services.scoring import ScoringService
 
 router = APIRouter()
@@ -83,6 +85,27 @@ def get_player_summary(player_name: str, db: Session = Depends(get_db)):
     if summary is None:
         raise HTTPException(status_code=404, detail="Player not found")
     return PlayerSummary(**summary)
+
+
+@router.get("/{player_id}/anomalies", response_model=PlayerAnomalies)
+def get_player_anomalies(
+    player_id: int,
+    mode: str = "all",
+    db: Session = Depends(get_db),
+):
+    """Get anomaly detection results for a player's last match."""
+    player = db.query(PlayerModel).filter(PlayerModel.id == player_id).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    service = AnomalyDetectionService(db)
+    anomalies = service.detect_anomalies(player_id, mode=mode)
+
+    return PlayerAnomalies(
+        player_id=player.id,
+        player_name=player.name,
+        anomalies=anomalies,
+    )
 
 
 @router.post("/", response_model=Player)
