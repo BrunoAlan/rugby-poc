@@ -320,3 +320,234 @@ class PDFGeneratorService:
         buffer.close()
 
         return pdf_bytes
+
+    def generate_player_report(
+        self,
+        player_name: str,
+        position_group: str,
+        matches_data: list[dict],
+        anomalies: dict[str, dict],
+        position_comparison: dict[str, dict],
+        ai_analysis: str | None = None,
+    ) -> bytes:
+        """Generate a PDF evolution report for a player."""
+        buffer = io.BytesIO()
+
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2 * cm,
+            leftMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+        )
+
+        elements = []
+
+        # Title
+        elements.append(
+            Paragraph("INFORME DE EVOLUCIÓN", self.styles["ReportTitle"])
+        )
+        elements.append(
+            Paragraph(player_name, self.styles["Heading2"])
+        )
+        elements.append(Spacer(1, 0.3 * cm))
+
+        # Player info
+        pos_label = "Forward" if position_group == "forwards" else "Back"
+        elements.append(
+            Paragraph(
+                f"<b>Posición:</b> {pos_label} | <b>Partidos jugados:</b> {len(matches_data)}",
+                self.styles["MatchInfo"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Fecha del informe:</b> {date.today().strftime('%d/%m/%Y')}",
+                self.styles["MatchInfo"],
+            )
+        )
+        elements.append(Spacer(1, 0.8 * cm))
+
+        # Score evolution table
+        elements.append(
+            Paragraph("EVOLUCIÓN DE PUNTUACIÓN", self.styles["SectionTitle"])
+        )
+        elements.append(Spacer(1, 0.3 * cm))
+
+        if matches_data:
+            score_headers = ["Rival", "Fecha", "Puesto", "Min.", "Puntuación"]
+            score_data = [score_headers]
+            for m in matches_data:
+                score_data.append([
+                    m.get("opponent", "-"),
+                    m.get("match_date", "-") or "-",
+                    f"#{m.get('puesto', '-')}",
+                    f"{m.get('tiempo_juego', 0):.0f}'",
+                    f"{m.get('score', 0):.1f}",
+                ])
+
+            score_col_widths = [4.5 * cm, 2.5 * cm, 1.5 * cm, 1.5 * cm, 2.5 * cm]
+            score_table = Table(score_data, colWidths=score_col_widths)
+            score_style = TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            ])
+            for i in range(1, len(score_data)):
+                if i % 2 == 0:
+                    score_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+            score_table.setStyle(score_style)
+            elements.append(score_table)
+
+        elements.append(Spacer(1, 0.8 * cm))
+
+        # Stats trends table
+        if anomalies:
+            elements.append(
+                Paragraph("TENDENCIAS POR ESTADÍSTICA", self.styles["SectionTitle"])
+            )
+            elements.append(Spacer(1, 0.3 * cm))
+
+            stat_labels = {
+                "tackles_positivos": "Tackles Positivos",
+                "tackles": "Tackles Totales",
+                "tackles_errados": "Tackles Errados",
+                "portador": "Portador",
+                "ruck_ofensivos": "Ruck Ofensivos",
+                "pases": "Pases",
+                "pases_malos": "Pases Malos",
+                "perdidas": "Pérdidas",
+                "recuperaciones": "Recuperaciones",
+                "gana_contacto": "Gana Contacto",
+                "quiebres": "Quiebres",
+                "penales": "Penales",
+                "juego_pie": "Juego Pie",
+                "recepcion_aire_buena": "Recep. Aire (B)",
+                "recepcion_aire_mala": "Recep. Aire (M)",
+                "try_": "Tries",
+            }
+
+            trend_headers = ["Estadística", "Med. Hist.", "Med. Rec.", "Último", "Desv. %", "Alerta"]
+            trend_data = [trend_headers]
+
+            for stat_name, label in stat_labels.items():
+                if stat_name not in anomalies:
+                    continue
+                a = anomalies[stat_name]
+                alert_text = ""
+                if a.get("alert") == "positive":
+                    alert_text = "↑ Mejora"
+                elif a.get("alert") == "negative":
+                    alert_text = "↓ Baja"
+
+                trend_data.append([
+                    label,
+                    f"{a.get('median_all', 0):.1f}",
+                    f"{a.get('median_recent', 0):.1f}",
+                    str(a.get("last_value", 0)),
+                    f"{a.get('deviation_pct', 0):+.1f}%",
+                    alert_text,
+                ])
+
+            trend_col_widths = [3.5 * cm, 2 * cm, 2 * cm, 1.5 * cm, 1.8 * cm, 2 * cm]
+            trend_table = Table(trend_data, colWidths=trend_col_widths)
+            trend_style = TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 8),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            ])
+
+            # Color alert rows
+            for i in range(1, len(trend_data)):
+                alert_val = trend_data[i][5]
+                if "Mejora" in alert_val:
+                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f0fff4"))
+                    trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#276749"))
+                elif "Baja" in alert_val:
+                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#fff5f5"))
+                    trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#c53030"))
+                elif i % 2 == 0:
+                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+
+            trend_table.setStyle(trend_style)
+            elements.append(trend_table)
+
+        elements.append(Spacer(1, 0.8 * cm))
+
+        # Position comparison table
+        if position_comparison:
+            significant = {k: v for k, v in position_comparison.items() if abs(v.get("difference_pct", 0)) >= 15}
+            if significant:
+                elements.append(
+                    Paragraph(
+                        f"COMPARATIVA CON {position_group.upper()}",
+                        self.styles["SectionTitle"],
+                    )
+                )
+                elements.append(Spacer(1, 0.3 * cm))
+
+                comp_headers = ["Estadística", "Jugador", "Grupo", "Diferencia"]
+                comp_data = [comp_headers]
+                for stat_name, comp in significant.items():
+                    label = stat_labels.get(stat_name, stat_name) if anomalies else stat_name
+                    diff = comp["difference_pct"]
+                    diff_text = f"{diff:+.1f}%"
+                    comp_data.append([
+                        label,
+                        f"{comp['player_avg']:.1f}",
+                        f"{comp['group_avg']:.1f}",
+                        diff_text,
+                    ])
+
+                comp_col_widths = [4 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm]
+                comp_table = Table(comp_data, colWidths=comp_col_widths)
+                comp_style = TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 9),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ])
+                for i in range(1, len(comp_data)):
+                    if i % 2 == 0:
+                        comp_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+                comp_table.setStyle(comp_style)
+                elements.append(comp_table)
+
+                elements.append(Spacer(1, 0.8 * cm))
+
+        # AI Analysis section
+        elements.append(
+            Paragraph("ANÁLISIS DE EVOLUCIÓN", self.styles["SectionTitle"])
+        )
+        analysis_elements = self._parse_markdown_analysis(ai_analysis)
+        elements.extend(analysis_elements)
+
+        # Build PDF
+        doc.build(elements)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        return pdf_bytes
