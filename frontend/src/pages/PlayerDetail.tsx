@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, FileDown } from 'lucide-react'
 import { usePlayerAnomalies, usePlayerSummary } from '../hooks/usePlayers'
 import PlayerAlertsCard from '../components/players/PlayerAlertsCard'
 import PlayerEvolutionCard from '../components/players/PlayerEvolutionCard'
@@ -202,14 +202,25 @@ export default function PlayerDetail() {
 
   return (
     <AnimatedPage className="space-y-6">
-      {/* Back Link */}
-      <Link
-        to="/players"
-        className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Volver a Jugadores
-      </Link>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Link
+          to="/players"
+          className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-primary-400 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Jugadores
+        </Link>
+        {summary.player_id && (
+          <button
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-500/20 px-4 py-2 text-sm font-medium text-primary-400 hover:bg-primary-500/30 transition-colors border border-primary-500/30"
+            onClick={() => window.open(`/api/exports/players/${summary.player_id}/report`, '_blank')}
+          >
+            <FileDown className="h-4 w-4" />
+            Descargar Reporte PDF
+          </button>
+        )}
+      </div>
 
       {/* Player Summary */}
       <PlayerSummaryComponent summary={summary} />
