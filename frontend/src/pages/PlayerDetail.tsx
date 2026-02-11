@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
-import { usePlayerSummary } from '../hooks/usePlayers'
+import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight } from 'lucide-react'
+import { usePlayerAnomalies, usePlayerSummary } from '../hooks/usePlayers'
 import PlayerAlertsCard from '../components/players/PlayerAlertsCard'
 import PlayerEvolutionCard from '../components/players/PlayerEvolutionCard'
 import PlayerSummaryComponent from '../components/players/PlayerSummary'
 import StatsChart from '../components/stats/StatsChart'
 import AnimatedPage from '../components/ui/AnimatedPage'
-import type { MatchStat } from '../types'
+import type { MatchStat, StatAnomaly } from '../types'
 
 const statCategories = {
   tackles: {
@@ -52,6 +52,7 @@ interface ExpandableMatchRowProps {
   match: MatchStat
   isExpanded: boolean
   onToggle: () => void
+  anomalies?: Record<string, StatAnomaly>
 }
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -65,7 +66,7 @@ const shortDateFormatter = new Intl.DateTimeFormat('es-ES', {
   month: 'short',
 })
 
-function ExpandableMatchRow({ match, isExpanded, onToggle }: ExpandableMatchRowProps) {
+function ExpandableMatchRow({ match, isExpanded, onToggle, anomalies }: ExpandableMatchRowProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -124,8 +125,14 @@ function ExpandableMatchRow({ match, isExpanded, onToggle }: ExpandableMatchRowP
                     {category.stats.map((stat) => (
                       <div key={stat.key} className="flex justify-between text-sm">
                         <span className="text-dark-300">{stat.label}</span>
-                        <span className="font-medium text-gray-200 tabular-nums">
+                        <span className="font-medium text-gray-200 tabular-nums flex items-center gap-1">
                           {(match as unknown as Record<string, number>)[stat.key] || 0}
+                          {anomalies?.[stat.key]?.alert === 'positive' && (
+                            <ArrowUp className="h-3 w-3 text-green-400" />
+                          )}
+                          {anomalies?.[stat.key]?.alert === 'negative' && (
+                            <ArrowDown className="h-3 w-3 text-red-400" />
+                          )}
                         </span>
                       </div>
                     ))}
@@ -146,6 +153,7 @@ export default function PlayerDetail() {
   const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set())
 
   const { data: summary, isLoading } = usePlayerSummary(decodedName)
+  const { data: anomaliesData } = usePlayerAnomalies(summary?.player_id || 0)
 
   const toggleMatch = (matchId: number) => {
     setExpandedMatches((prev) => {
@@ -259,6 +267,7 @@ export default function PlayerDetail() {
                     match={match}
                     isExpanded={expandedMatches.has(match.match_id)}
                     onToggle={() => toggleMatch(match.match_id)}
+                    anomalies={idx === summary.matches.length - 1 ? anomaliesData?.anomalies : undefined}
                   />
                 ))}
               </tbody>
