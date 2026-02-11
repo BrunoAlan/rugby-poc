@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePlayerSummary } from '../hooks/usePlayers'
 import PlayerAlertsCard from '../components/players/PlayerAlertsCard'
+import PlayerEvolutionCard from '../components/players/PlayerEvolutionCard'
 import PlayerSummaryComponent from '../components/players/PlayerSummary'
 import StatsChart from '../components/stats/StatsChart'
 import AnimatedPage from '../components/ui/AnimatedPage'
@@ -208,6 +209,11 @@ export default function PlayerDetail() {
       {/* Player Alerts */}
       {summary.player_id && (
         <PlayerAlertsCard playerId={summary.player_id} />
+      )}
+
+      {/* AI Evolution Analysis */}
+      {summary.player_id && (
+        <PlayerEvolutionCard playerId={summary.player_id} />
       )}
 
       {/* Score Evolution Chart */}
