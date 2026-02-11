@@ -46,6 +46,7 @@ export interface PlayerCreate {
 }
 
 export interface PlayerSummary {
+  player_id: number;
   player_name: string;
   matches_played: number;
   total_minutes: number | null;
@@ -209,6 +210,48 @@ export interface UploadResult {
   ai_analysis_generated: number;
   ai_analysis_errors: number;
   ai_analysis_queued: number;
+}
+
+// Anomaly detection types
+export interface StatAnomaly {
+  median_all: number;
+  median_recent: number;
+  last_value: number;
+  deviation_pct: number;
+  alert: 'positive' | 'negative' | null;
+  threshold: number;
+}
+
+export interface PlayerAnomalies {
+  player_id: number;
+  player_name: string;
+  anomalies: Record<string, StatAnomaly>;
+}
+
+// Evolution analysis types
+export interface PlayerEvolutionAnalysis {
+  player_id: number;
+  player_name: string;
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  analysis: string | null;
+  error: string | null;
+  generated_at: string | null;
+  match_count: number | null;
+  is_stale: boolean;
+}
+
+// Position comparison types
+export interface PositionStatComparison {
+  player_avg: number;
+  group_avg: number;
+  difference_pct: number;
+}
+
+export interface PositionComparison {
+  player_id: number;
+  player_name: string;
+  position_group: 'forwards' | 'backs';
+  stats: Record<string, PositionStatComparison>;
 }
 
 // API response types

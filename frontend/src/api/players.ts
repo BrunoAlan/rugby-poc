@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Player, PlayerCreate, PlayerSummary, PlayerWithStats } from '../types'
+import type { Player, PlayerCreate, PlayerSummary, PlayerWithStats, PlayerAnomalies, PlayerEvolutionAnalysis, PositionComparison } from '../types'
 
 interface PaginatedResponse<T> {
   items: T[]
@@ -44,5 +44,25 @@ export const playersApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/players/${id}`)
+  },
+
+  getAnomalies: async (playerId: number, mode: 'all' | 'recent' = 'all'): Promise<PlayerAnomalies> => {
+    const response = await apiClient.get(`/players/${playerId}/anomalies`, { params: { mode } })
+    return response.data
+  },
+
+  getEvolutionAnalysis: async (playerId: number): Promise<PlayerEvolutionAnalysis> => {
+    const response = await apiClient.get(`/players/${playerId}/evolution-analysis`)
+    return response.data
+  },
+
+  triggerEvolutionAnalysis: async (playerId: number): Promise<PlayerEvolutionAnalysis> => {
+    const response = await apiClient.post(`/players/${playerId}/evolution-analysis`)
+    return response.data
+  },
+
+  getPositionComparison: async (playerId: number): Promise<PositionComparison> => {
+    const response = await apiClient.get(`/players/${playerId}/position-comparison`)
+    return response.data
   },
 }

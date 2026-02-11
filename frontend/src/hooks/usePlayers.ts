@@ -74,3 +74,38 @@ export const useDeletePlayer = () => {
     },
   })
 }
+
+export const usePlayerAnomalies = (playerId: number, mode: 'all' | 'recent' = 'all') => {
+  return useQuery({
+    queryKey: ['player', 'anomalies', playerId, mode],
+    queryFn: () => playersApi.getAnomalies(playerId, mode),
+    enabled: !!playerId,
+  })
+}
+
+export const usePlayerEvolutionAnalysis = (playerId: number) => {
+  return useQuery({
+    queryKey: ['player', 'evolution-analysis', playerId],
+    queryFn: () => playersApi.getEvolutionAnalysis(playerId),
+    enabled: !!playerId,
+  })
+}
+
+export const useTriggerEvolutionAnalysis = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (playerId: number) => playersApi.triggerEvolutionAnalysis(playerId),
+    onSuccess: (_, playerId) => {
+      queryClient.invalidateQueries({ queryKey: ['player', 'evolution-analysis', playerId] })
+    },
+  })
+}
+
+export const usePlayerPositionComparison = (playerId: number) => {
+  return useQuery({
+    queryKey: ['player', 'position-comparison', playerId],
+    queryFn: () => playersApi.getPositionComparison(playerId),
+    enabled: !!playerId,
+  })
+}
