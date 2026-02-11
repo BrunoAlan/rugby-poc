@@ -302,7 +302,7 @@ class ScoringService:
 
         stats_list = player.match_stats
         if not stats_list:
-            return {"player_name": player_name, "matches_played": 0}
+            return {"player_id": player.id, "player_name": player_name, "matches_played": 0}
 
         total_tiempo = sum(s.tiempo_juego or 0 for s in stats_list)
         avg_score = (
@@ -312,6 +312,7 @@ class ScoringService:
         )
 
         return {
+            "player_id": player.id,
             "player_name": player_name,
             "matches_played": len(stats_list),
             "total_minutes": round(total_tiempo, 1),

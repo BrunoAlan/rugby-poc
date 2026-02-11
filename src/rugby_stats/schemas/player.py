@@ -66,6 +66,7 @@ class PlayerMatchDetail(BaseModel):
 class PlayerSummary(BaseModel):
     """Player summary across all matches."""
 
+    player_id: int
     player_name: str
     matches_played: int
     total_minutes: float | None = None
