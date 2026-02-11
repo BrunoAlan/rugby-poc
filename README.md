@@ -10,6 +10,10 @@ A Python application for importing and analyzing rugby match statistics from Exc
 - Time-normalized performance metrics
 - REST API for data access
 - CLI for common operations
+- Player evolution reports with anomaly detection
+- AI-powered match and player analysis (via OpenRouter)
+- PDF export for match reports and player evolution reports
+- React frontend with dark theme, charts, and interactive stats
 
 ## Quick Start
 
@@ -93,6 +97,25 @@ Players are scored based on their position:
 - **Backs (positions 9-15)**: Higher weights for attacking stats like passes, breaks, tries
 
 Scores are normalized to 80 minutes to allow fair comparison between players with different playing times.
+
+## Frontend
+
+```bash
+cd frontend
+pnpm install
+pnpm dev        # Start dev server at http://localhost:3000
+pnpm build      # TypeScript check + production build
+```
+
+The frontend proxies `/api` requests to the backend via Vite config.
+
+## Player Evolution & Anomaly Detection
+
+The player detail page includes:
+- **Anomaly alerts**: Detects when a player's last match stats deviate significantly from their historical median (thresholds: 25% for consistent stats, 30% for moderate, 50% for volatile)
+- **AI evolution analysis**: On-demand narrative analysis of a player's progression, generated via OpenRouter and cached
+- **Position comparison**: Player averages vs their position group (forwards/backs)
+- **PDF report**: Downloadable evolution report with trends, comparisons, and AI analysis
 
 ## Running Tests
 

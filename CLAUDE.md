@@ -56,7 +56,7 @@ docker compose up -d                             # Start PostgreSQL
 ```
 models/          # SQLAlchemy ORM models
 api/             # FastAPI route handlers
-services/        # Business logic (importer.py, scoring.py, pdf_generator.py)
+services/        # Business logic (importer.py, scoring.py, pdf_generator.py, anomaly_detection.py, ai_analysis.py)
 schemas/         # Pydantic request/response models
 cli/             # Typer CLI commands
 ```
@@ -71,18 +71,23 @@ pages/           # Route-level page components
 ```
 
 ### Key Models
-- **Player**: name (unique)
-- **Match**: opponent_name, match_date, scores
+- **Player**: name (unique), AI evolution analysis fields (cached)
+- **Match**: opponent_name, match_date, scores, AI analysis fields (cached)
 - **PlayerMatchStats**: 16 statistics fields + calculated scores (score_absoluto, puntuacion_final)
 - **ScoringConfiguration/Weight**: position-based multipliers for score calculation
 
 ### API Endpoints
 - `GET /api/players/with-stats` - Players with aggregated stats
 - `GET /api/players/name/{name}/summary` - Detailed player match history
+- `GET /api/players/{id}/anomalies?mode=all|recent` - Anomaly detection for last match
+- `GET /api/players/{id}/position-comparison` - Player vs position group averages
+- `GET /api/players/{id}/evolution-analysis` - Cached AI evolution analysis
+- `POST /api/players/{id}/evolution-analysis` - Trigger AI evolution analysis generation
 - `GET /api/stats/rankings?match_id=X` - Rankings (aggregated if no match_id)
 - `GET /api/matches/` - Match list
 - `POST /api/imports/excel` - Upload Excel file
 - `GET /api/exports/matches/{match_id}/pdf` - Download match report as PDF
+- `GET /api/exports/players/{id}/report` - Download player evolution report as PDF
 
 ## Database
 
@@ -131,3 +136,16 @@ Match reports can be downloaded as PDF from the match detail page. The report in
 **Implementation:**
 - Backend: `PDFGeneratorService` in `services/pdf_generator.py` uses reportlab
 - Frontend: `PDFDownloadButton` component triggers download via `/api/exports/matches/{id}/pdf`
+
+## Player Evolution & Anomaly Detection
+
+Player detail page shows evolution analysis and anomaly alerts:
+- **Anomaly Detection**: `AnomalyDetectionService` compares each stat in the last match against the player's historical median. Stats grouped by volatility (25%/30%/50% thresholds). Negative stats (tackles_errados, pases_malos, etc.) have inverted alert logic.
+- **AI Evolution Analysis**: On-demand analysis via OpenRouter, cached on Player model. Invalidated when new matches are imported (compares `ai_evolution_match_count` vs actual match count). Generated in background thread.
+- **Position Comparison**: Compares player averages against their position group (forwards/backs) averages.
+- **Player PDF Report**: Exportable report with score evolution table, stats trends with alert highlighting, position comparison, and AI analysis.
+
+**Frontend components:**
+- `PlayerAlertsCard` — anomaly alerts with all/recent toggle
+- `PlayerEvolutionCard` — AI analysis with status states and polling
+- Trend indicators (arrows) in match history expanded rows
