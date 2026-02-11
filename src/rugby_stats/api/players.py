@@ -1,6 +1,7 @@
 """Player API routes."""
 
 from collections import Counter
+from threading import Thread
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from rugby_stats.schemas import (
     Player,
     PlayerAnomalies,
     PlayerCreate,
+    PlayerEvolutionAnalysis,
     PlayerList,
     PlayerSummary,
     PlayerWithStats,
@@ -18,6 +20,7 @@ from rugby_stats.schemas import (
     PositionComparison,
 )
 from rugby_stats.services.anomaly_detection import AnomalyDetectionService
+from rugby_stats.services.background_tasks import generate_player_evolution_background
 from rugby_stats.services.scoring import ScoringService
 
 router = APIRouter()
@@ -174,6 +177,60 @@ def get_position_comparison(
         player_name=player.name,
         position_group=position_group,
         stats=stats_comparison,
+    )
+
+
+@router.get("/{player_id}/evolution-analysis", response_model=PlayerEvolutionAnalysis)
+def get_evolution_analysis(
+    player_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get cached evolution analysis for a player."""
+    player = db.query(PlayerModel).filter(PlayerModel.id == player_id).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    current_match_count = len(player.match_stats)
+    is_stale = (
+        player.ai_evolution_match_count is not None
+        and player.ai_evolution_match_count != current_match_count
+    )
+
+    return PlayerEvolutionAnalysis(
+        player_id=player.id,
+        player_name=player.name,
+        status=player.ai_evolution_analysis_status,
+        analysis=player.ai_evolution_analysis,
+        error=player.ai_evolution_analysis_error,
+        generated_at=player.ai_evolution_generated_at,
+        match_count=player.ai_evolution_match_count,
+        is_stale=is_stale,
+    )
+
+
+@router.post("/{player_id}/evolution-analysis", response_model=PlayerEvolutionAnalysis)
+def trigger_evolution_analysis(
+    player_id: int,
+    db: Session = Depends(get_db),
+):
+    """Trigger generation of evolution analysis in background."""
+    player = db.query(PlayerModel).filter(PlayerModel.id == player_id).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    if not player.match_stats:
+        raise HTTPException(status_code=400, detail="Player has no match stats")
+
+    player.ai_evolution_analysis_status = "processing"
+    db.commit()
+
+    thread = Thread(target=generate_player_evolution_background, args=(player_id,))
+    thread.start()
+
+    return PlayerEvolutionAnalysis(
+        player_id=player.id,
+        player_name=player.name,
+        status="processing",
     )
 
 

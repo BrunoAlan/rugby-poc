@@ -1,10 +1,13 @@
 """Background task services for async processing."""
 
 import logging
+from collections import Counter
+from datetime import datetime
 
 from rugby_stats.database import SessionLocal
-from rugby_stats.models import Match
+from rugby_stats.models import Match, Player, PlayerMatchStats
 from rugby_stats.services.ai_analysis import AIAnalysisService
+from rugby_stats.services.anomaly_detection import AnomalyDetectionService
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +70,93 @@ def generate_ai_analysis_background(match_ids: list[int]) -> None:
     finally:
         db.close()
         logger.info("Background AI analysis task completed")
+
+
+def generate_player_evolution_background(player_id: int) -> None:
+    """Generate AI evolution analysis for a player in background."""
+    logger.info(f"Starting background player evolution analysis for player {player_id}")
+
+    db = SessionLocal()
+    try:
+        player = db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            logger.warning(f"Player {player_id} not found")
+            return
+
+        player.ai_evolution_analysis_status = "processing"
+        db.commit()
+
+        try:
+            anomaly_service = AnomalyDetectionService(db)
+            anomalies = anomaly_service.detect_anomalies(player_id)
+
+            from rugby_stats.services.scoring import ScoringService
+            scoring_service = ScoringService(db)
+            summary = scoring_service.get_player_summary(player.name)
+
+            if not summary or not summary.get("matches"):
+                player.ai_evolution_analysis_error = "No match data available"
+                player.ai_evolution_analysis_status = "error"
+                db.commit()
+                return
+
+            positions = [s.puesto for s in player.match_stats if s.puesto]
+            most_common_pos = Counter(positions).most_common(1)[0][0]
+            is_forward = 1 <= most_common_pos <= 8
+            position_group = "forwards" if is_forward else "backs"
+
+            if is_forward:
+                group_stats = db.query(PlayerMatchStats).filter(
+                    PlayerMatchStats.puesto.between(1, 8)
+                ).all()
+            else:
+                group_stats = db.query(PlayerMatchStats).filter(
+                    PlayerMatchStats.puesto.between(9, 15)
+                ).all()
+
+            stat_fields = [
+                "tackles_positivos", "tackles", "tackles_errados", "portador",
+                "ruck_ofensivos", "pases", "pases_malos", "perdidas",
+                "recuperaciones", "gana_contacto", "quiebres", "penales",
+                "juego_pie", "recepcion_aire_buena", "recepcion_aire_mala", "try_",
+            ]
+            position_comparison = {}
+            for field in stat_fields:
+                player_values = [getattr(s, field, 0) or 0 for s in player.match_stats]
+                group_values = [getattr(s, field, 0) or 0 for s in group_stats]
+                player_avg = sum(player_values) / len(player_values) if player_values else 0
+                group_avg = sum(group_values) / len(group_values) if group_values else 0
+                diff_pct = round(((player_avg - group_avg) / group_avg) * 100, 1) if group_avg > 0 else 0.0
+                position_comparison[field] = {
+                    "player_avg": round(player_avg, 1),
+                    "group_avg": round(group_avg, 1),
+                    "difference_pct": diff_pct,
+                }
+
+            ai_service = AIAnalysisService(db)
+            analysis = ai_service.generate_player_evolution(
+                player_name=player.name,
+                position_group=position_group,
+                matches_data=summary["matches"],
+                anomalies=anomalies,
+                position_comparison=position_comparison,
+            )
+
+            player.ai_evolution_analysis = analysis
+            player.ai_evolution_analysis_status = "completed"
+            player.ai_evolution_analysis_error = None
+            player.ai_evolution_generated_at = datetime.utcnow()
+            player.ai_evolution_match_count = len(player.match_stats)
+            db.commit()
+
+        except Exception as e:
+            logger.error(f"Error generating evolution analysis for player {player_id}: {e}")
+            db.rollback()
+            player = db.query(Player).filter(Player.id == player_id).first()
+            if player:
+                player.ai_evolution_analysis_status = "error"
+                player.ai_evolution_analysis_error = str(e)[:500]
+                db.commit()
+
+    finally:
+        db.close()

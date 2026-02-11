@@ -116,3 +116,16 @@ class PositionComparison(BaseModel):
     player_name: str
     position_group: str  # "forwards" or "backs"
     stats: dict[str, dict]
+
+
+class PlayerEvolutionAnalysis(BaseModel):
+    """Player evolution AI analysis response."""
+
+    player_id: int
+    player_name: str
+    status: str
+    analysis: str | None = None
+    error: str | None = None
+    generated_at: datetime | None = None
+    match_count: int | None = None
+    is_stale: bool = False

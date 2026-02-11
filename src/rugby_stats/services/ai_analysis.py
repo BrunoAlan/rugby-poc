@@ -34,6 +34,34 @@ Mencioná 2-3 jugadores que brillaron y explicá brevemente por qué.
 ## Recomendaciones
 1-2 sugerencias concretas para el próximo partido."""
 
+PLAYER_EVOLUTION_SYSTEM_PROMPT = """Sos un analista experto de rugby argentino. Tu tarea es analizar la evolución de un jugador a lo largo de múltiples partidos.
+
+IMPORTANTE:
+- Escribí en español rioplatense (Argentina)
+- Usá vocabulario de rugby local
+- Sé conciso pero perspicaz
+- Basate estrictamente en los datos proporcionados
+
+Generá tu análisis con las siguientes secciones usando markdown:
+
+## Progreso General
+Un párrafo evaluando la tendencia general del jugador (mejorando, estable, en baja).
+
+## Fortalezas Consistentes
+Lista de 2-3 stats donde el jugador rinde consistentemente bien.
+
+## Áreas a Mejorar
+Lista de 2-3 stats donde el jugador tiene margen de mejora.
+
+## Alertas del Último Partido
+Comentario sobre las anomalías detectadas en el último partido (tanto positivas como negativas).
+
+## Comparativa con el Equipo
+Breve análisis de cómo se compara con el promedio de su posición.
+
+## Recomendaciones
+2-3 sugerencias concretas para el jugador."""
+
 
 class AIAnalysisService:
     """Service for generating AI-powered match analysis."""
@@ -73,18 +101,11 @@ class AIAnalysisService:
         return self._call_openrouter(prompt)
 
     def _call_openrouter(self, user_prompt: str) -> str:
-        """
-        Call OpenRouter API to generate analysis.
+        """Call OpenRouter API to generate analysis."""
+        return self._call_openrouter_with_system(user_prompt, SYSTEM_PROMPT)
 
-        Args:
-            user_prompt: The user prompt with match data
-
-        Returns:
-            The generated analysis text
-
-        Raises:
-            httpx.HTTPError: If the API call fails
-        """
+    def _call_openrouter_with_system(self, user_prompt: str, system_prompt: str) -> str:
+        """Call OpenRouter API with a custom system prompt."""
         headers = {
             "Authorization": f"Bearer {self.settings.openrouter_api_key}",
             "Content-Type": "application/json",
@@ -95,11 +116,11 @@ class AIAnalysisService:
         payload = {
             "model": self.settings.openrouter_model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             "temperature": 0.7,
-            "max_tokens": 1500,
+            "max_tokens": 2000,
         }
 
         with httpx.Client(timeout=self.TIMEOUT) as client:
@@ -107,7 +128,6 @@ class AIAnalysisService:
             response.raise_for_status()
             data = response.json()
 
-        # Extract the generated text
         choices = data.get("choices", [])
         if not choices:
             raise ValueError("No response from AI model")
@@ -227,6 +247,86 @@ class AIAnalysisService:
             f"Juego pie {totals['juego_pie']}, Aire buena {totals['recepcion_aire_buena']}, "
             f"Aire mala {totals['recepcion_aire_mala']}, Tries {totals['try_']}"
         )
+
+    def generate_player_evolution(
+        self,
+        player_name: str,
+        position_group: str,
+        matches_data: list[dict],
+        anomalies: dict,
+        position_comparison: dict,
+    ) -> str:
+        """Generate AI analysis for a player's evolution."""
+        if not self.settings.can_generate_ai_analysis:
+            raise ValueError("AI analysis is not configured. Set OPENROUTER_API_KEY in .env")
+
+        prompt = self._build_player_evolution_prompt(
+            player_name, position_group, matches_data, anomalies, position_comparison
+        )
+        return self._call_openrouter_with_system(prompt, PLAYER_EVOLUTION_SYSTEM_PROMPT)
+
+    def _build_player_evolution_prompt(
+        self,
+        player_name: str,
+        position_group: str,
+        matches_data: list[dict],
+        anomalies: dict,
+        position_comparison: dict,
+    ) -> str:
+        """Build prompt for player evolution analysis."""
+        lines = [
+            f"# Evolución de {player_name} ({position_group.title()})",
+            f"- **Partidos jugados:** {len(matches_data)}",
+            "",
+            "## Historial de Partidos (orden cronológico)",
+            "",
+        ]
+
+        for m in matches_data:
+            lines.append(
+                f"**vs {m['opponent']}** ({m.get('match_date', 'N/A')}, {m['tiempo_juego']:.0f} min, Score: {m['score']:.1f}): "
+                f"Tackles+ {m['tackles_positivos']}, Tackles {m['tackles']}, Tackles err {m['tackles_errados']}, "
+                f"Portador {m['portador']}, Rucks {m['ruck_ofensivos']}, Pases {m['pases']}, "
+                f"Pases malos {m['pases_malos']}, Perdidas {m['perdidas']}, Recup {m['recuperaciones']}, "
+                f"Gana contacto {m['gana_contacto']}, Quiebres {m['quiebres']}, Penales {m['penales']}, "
+                f"Juego pie {m['juego_pie']}, Aire buena {m['recepcion_aire_buena']}, "
+                f"Aire mala {m['recepcion_aire_mala']}, Tries {m['try_']}"
+            )
+
+        lines.append("")
+        lines.append("## Anomalías Detectadas en el Último Partido")
+        lines.append("")
+
+        alerts_found = False
+        for stat_name, data in anomalies.items():
+            if data.get("alert"):
+                alert_type = "POSITIVA" if data["alert"] == "positive" else "NEGATIVA"
+                lines.append(
+                    f"- **{stat_name}** ({alert_type}): valor={data['last_value']}, "
+                    f"mediana={data['median_all']}, desviación={data['deviation_pct']:+.1f}%"
+                )
+                alerts_found = True
+
+        if not alerts_found:
+            lines.append("- Sin anomalías significativas")
+
+        lines.append("")
+        lines.append(f"## Comparativa con Promedio de {position_group.title()}")
+        lines.append("")
+
+        for stat_name, comp in position_comparison.items():
+            diff = comp["difference_pct"]
+            if abs(diff) >= 15:
+                direction = "por encima" if diff > 0 else "por debajo"
+                lines.append(
+                    f"- **{stat_name}**: jugador={comp['player_avg']}, "
+                    f"grupo={comp['group_avg']} ({abs(diff):.0f}% {direction})"
+                )
+
+        lines.append("")
+        lines.append("Analizá la evolución de este jugador y generá un informe completo.")
+
+        return "\n".join(lines)
 
     def analyze_and_save(self, match: Match) -> None:
         """
