@@ -88,7 +88,7 @@ export default function PlayerAlertsCard({ playerId }: PlayerAlertsCardProps) {
                     {STAT_LABELS[stat] || stat}
                   </span>
                   <span className="text-xs text-green-400/70 ml-2">
-                    {data.last_value} (med. {data.median_all}, {data.deviation_pct > 0 ? '+' : ''}
+                    {data.last_value} (med. {mode === 'recent' ? data.median_recent : data.median_all}, {data.deviation_pct > 0 ? '+' : ''}
                     {data.deviation_pct}%)
                   </span>
                 </div>
@@ -111,7 +111,7 @@ export default function PlayerAlertsCard({ playerId }: PlayerAlertsCardProps) {
                     {STAT_LABELS[stat] || stat}
                   </span>
                   <span className="text-xs text-red-400/70 ml-2">
-                    {data.last_value} (med. {data.median_all}, {data.deviation_pct > 0 ? '+' : ''}
+                    {data.last_value} (med. {mode === 'recent' ? data.median_recent : data.median_all}, {data.deviation_pct > 0 ? '+' : ''}
                     {data.deviation_pct}%)
                   </span>
                 </div>
