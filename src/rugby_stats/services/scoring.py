@@ -20,7 +20,6 @@ class ScoringService:
 
     def seed_default_weights(self) -> ScoringConfiguration:
         """Create default scoring configuration with predefined weights."""
-        # Check if default config already exists
         existing = (
             self.db.query(ScoringConfiguration)
             .filter(ScoringConfiguration.name == "default")
@@ -29,24 +28,23 @@ class ScoringService:
         if existing:
             return existing
 
-        # Create new configuration
         config = ScoringConfiguration(
             name="default",
-            description="Default scoring weights based on position (forwards vs backs)",
+            description="Default scoring weights per position (1-15)",
             is_active=True,
         )
         self.db.add(config)
         self.db.flush()
 
-        # Add weights
-        for action_name, (fwd_weight, back_weight) in DEFAULT_SCORING_WEIGHTS.items():
-            weight = ScoringWeight(
-                config_id=config.id,
-                action_name=action_name,
-                forwards_weight=fwd_weight,
-                backs_weight=back_weight,
-            )
-            self.db.add(weight)
+        for action_name, weights_by_pos in DEFAULT_SCORING_WEIGHTS.items():
+            for position, weight_value in weights_by_pos.items():
+                weight = ScoringWeight(
+                    config_id=config.id,
+                    action_name=action_name,
+                    position=position,
+                    weight=weight_value,
+                )
+                self.db.add(weight)
 
         self.db.commit()
         return config
@@ -78,11 +76,12 @@ class ScoringService:
         if config is None:
             raise ValueError("No active scoring configuration found")
 
-        # Build weights dictionary
-        weights = {w.action_name: w for w in config.weights}
+        # Build weights dictionary: {action_name: {position: weight}}
+        weights: dict[str, dict[int, float]] = {}
+        for w in config.weights:
+            weights.setdefault(w.action_name, {})[w.position] = w.weight
 
-        # Determine if player is forward or back
-        is_forward = stats.is_forward
+        position = stats.puesto
 
         # Calculate absolute score
         score_absoluto = 0.0
@@ -108,14 +107,11 @@ class ScoringService:
 
         for field in stat_fields:
             stat_value = getattr(stats, field, 0) or 0
-            weight = weights.get(field)
-            if weight:
-                w = weight.forwards_weight if is_forward else weight.backs_weight
-                score_absoluto += stat_value * w
+            action_weights = weights.get(field, {})
+            w = action_weights.get(position, 0.0)
+            score_absoluto += stat_value * w
 
-        # Normalize to 80 minutes with floor to prevent inflated scores
-        # Players with less than MIN_MINUTES_FOR_NORMALIZATION minutes are normalized
-        # using the floor value to avoid extreme score inflation
+        # Normalize to standard match duration with floor
         tiempo_juego = stats.tiempo_juego or STANDARD_MATCH_DURATION
         tiempo_for_calc = max(tiempo_juego, MIN_MINUTES_FOR_NORMALIZATION)
         if tiempo_for_calc > 0:
