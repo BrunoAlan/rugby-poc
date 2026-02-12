@@ -9,8 +9,8 @@ class ScoringWeightBase(BaseModel):
     """Base scoring weight schema."""
 
     action_name: str
-    forwards_weight: float
-    backs_weight: float
+    position: int
+    weight: float
 
 
 class ScoringWeightCreate(ScoringWeightBase):
@@ -28,6 +28,12 @@ class ScoringWeight(ScoringWeightBase):
     config_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class WeightUpdate(BaseModel):
+    """Schema for updating a single weight."""
+
+    weight: float
 
 
 class ScoringConfigurationBase(BaseModel):

@@ -5,10 +5,13 @@ from sqlalchemy.orm import Session
 
 from rugby_stats.database import get_db
 from rugby_stats.models import ScoringConfiguration as ConfigModel
+from rugby_stats.models import ScoringWeight as WeightModel
 from rugby_stats.schemas.scoring import (
     ScoringConfiguration,
     ScoringConfigurationCreate,
     ScoringConfigurationWithWeights,
+    WeightUpdate,
+    ScoringWeight as WeightSchema,
 )
 from rugby_stats.services.scoring import ScoringService
 
@@ -80,6 +83,18 @@ def seed_default_weights(db: Session = Depends(get_db)):
     scoring_service = ScoringService(db)
     config = scoring_service.seed_default_weights()
     return config
+
+
+@router.put("/weights/{weight_id}", response_model=WeightSchema)
+def update_weight(weight_id: int, data: WeightUpdate, db: Session = Depends(get_db)):
+    """Update a single scoring weight value."""
+    weight = db.query(WeightModel).filter(WeightModel.id == weight_id).first()
+    if weight is None:
+        raise HTTPException(status_code=404, detail="Weight not found")
+    weight.weight = data.weight
+    db.commit()
+    db.refresh(weight)
+    return weight
 
 
 @router.post("/recalculate")
