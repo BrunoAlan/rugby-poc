@@ -66,6 +66,63 @@ Breve análisis de cómo se compara con el promedio de su posición.
 2-3 sugerencias concretas para el jugador."""
 
 
+def build_player_evolution_system_prompt(
+    group: dict,
+    config: ScoringConfiguration | None = None,
+) -> str:
+    """Build a position-group-specific system prompt for player evolution analysis."""
+    lines = [
+        "Sos un analista experto de rugby argentino. Tu tarea es analizar la evolución de un jugador a lo largo de múltiples partidos.",
+        "",
+        "IMPORTANTE:",
+        "- Escribí en español rioplatense (Argentina)",
+        "- Usá vocabulario de rugby local",
+        "- Sé conciso pero perspicaz",
+        "- Basate estrictamente en los datos proporcionados",
+        "",
+        "## Rol del jugador",
+        group["role_description"],
+        "",
+    ]
+
+    # Add top weighted stats from active config
+    if config:
+        top_weights = AIAnalysisService.get_top_weights_for_group(
+            config, group["positions"]
+        )
+        if top_weights:
+            lines.append("## Stats más valoradas para esta posición (config actual)")
+            for i, (action, weight) in enumerate(top_weights, 1):
+                lines.append(f"{i}. {action} (peso: {weight:.1f})")
+            lines.append("")
+            lines.append(
+                "Usá esta información para contextualizar el rendimiento: "
+                "priorizá el análisis de estas stats y evaluá si el jugador "
+                "rinde bien en lo que más importa para su posición."
+            )
+            lines.append("")
+
+    # Output sections
+    lines.append("Generá tu análisis con las siguientes secciones usando markdown:")
+    lines.append("")
+    lines.append("## Progreso General")
+    lines.append("Un párrafo evaluando la tendencia general del jugador (mejorando, estable, en baja).")
+    lines.append("")
+
+    for section_title, section_instructions in group["output_sections"]:
+        lines.append(f"## {section_title}")
+        lines.append(section_instructions)
+        lines.append("")
+
+    lines.append("## Alertas del Último Partido")
+    lines.append("Comentario sobre las anomalías detectadas en el último partido (tanto positivas como negativas).")
+    lines.append("")
+    lines.append("## Recomendaciones")
+    lines.append("2-3 sugerencias concretas para el jugador, enfocadas en su rol de posición.")
+
+    return "\n".join(lines)
+
+
 class AIAnalysisService:
     """Service for generating AI-powered match analysis."""
 

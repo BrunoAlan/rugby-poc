@@ -1,7 +1,8 @@
 """Tests for AI analysis prompt building helpers."""
 
+from rugby_stats.constants import POSITION_GROUPS
 from rugby_stats.models import ScoringConfiguration, ScoringWeight
-from rugby_stats.services.ai_analysis import AIAnalysisService
+from rugby_stats.services.ai_analysis import AIAnalysisService, build_player_evolution_system_prompt
 
 
 def _create_config_with_weights(db_session, weights_dict: dict[str, dict[int, float]]):
@@ -47,3 +48,44 @@ def test_get_top_weights_for_group_excludes_negative(db_session):
     action_names = [r[0] for r in result]
     assert "tackles_positivos" in action_names
     assert "tackles_errados" not in action_names
+
+
+def test_build_system_prompt_includes_role_description(db_session):
+    config = _create_config_with_weights(db_session, {
+        "tackles_positivos": {1: 5.0, 3: 4.0},
+    })
+    group = POSITION_GROUPS["pilares"]
+
+    prompt = build_player_evolution_system_prompt(group, config)
+
+    assert "Pilar del scrum" in prompt
+    assert "Trabajo en Scrum y Ruck" in prompt
+    assert "Defensa" in prompt
+    assert "Disciplina y Aportes" in prompt
+
+
+def test_build_system_prompt_includes_weighted_stats(db_session):
+    config = _create_config_with_weights(db_session, {
+        "tackles_positivos": {9: 3.5, 10: 3.0},
+        "pases": {9: 2.0, 10: 1.8},
+        "juego_pie": {9: 2.5, 10: 4.0},
+    })
+    group = POSITION_GROUPS["medios"]
+
+    prompt = build_player_evolution_system_prompt(group, config)
+
+    assert "tackles_positivos" in prompt
+    assert "juego_pie" in prompt
+    assert "Distribución" in prompt
+    assert "Conducción de Juego" in prompt
+
+
+def test_build_system_prompt_has_common_sections():
+    """Common sections should always be present regardless of group."""
+    group = POSITION_GROUPS["hooker"]
+    # Without a config, should still have common sections
+    prompt = build_player_evolution_system_prompt(group, config=None)
+
+    assert "Progreso General" in prompt
+    assert "Alertas del Último Partido" in prompt
+    assert "Recomendaciones" in prompt
