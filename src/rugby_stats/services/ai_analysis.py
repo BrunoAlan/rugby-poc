@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from rugby_stats.config import get_settings
-from rugby_stats.constants import get_position_label
+from rugby_stats.constants import get_group_for_position, get_position_label
 from rugby_stats.models import Match, PlayerMatchStats, ScoringConfiguration
 from rugby_stats.models.scoring_config import DEFAULT_SCORING_WEIGHTS
 
@@ -35,6 +35,7 @@ Mencioná 2-3 jugadores que brillaron y explicá brevemente por qué.
 
 ## Recomendaciones
 1-2 sugerencias concretas para el próximo partido."""
+
 
 def build_player_evolution_system_prompt(
     group: dict,
@@ -353,8 +354,6 @@ class AIAnalysisService:
             raise ValueError(
                 "AI analysis is not configured. Set OPENROUTER_API_KEY in .env"
             )
-
-        from rugby_stats.constants import get_group_for_position
 
         group = get_group_for_position(position_number)
         if not group:

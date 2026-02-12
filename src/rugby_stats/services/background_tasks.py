@@ -4,6 +4,9 @@ import logging
 from collections import Counter
 from datetime import datetime
 
+from sqlalchemy.orm import joinedload
+
+from rugby_stats.constants import get_group_for_position
 from rugby_stats.database import SessionLocal
 from rugby_stats.models import Match, Player, PlayerMatchStats
 from rugby_stats.services.ai_analysis import AIAnalysisService
@@ -103,8 +106,11 @@ def generate_player_evolution_background(player_id: int) -> None:
             positions = [s.puesto for s in player.match_stats if s.puesto]
             most_common_pos = Counter(positions).most_common(1)[0][0]
 
+            group = get_group_for_position(most_common_pos)
+            group_positions = group["positions"] if group else [most_common_pos]
+
             group_stats = db.query(PlayerMatchStats).filter(
-                PlayerMatchStats.puesto == most_common_pos
+                PlayerMatchStats.puesto.in_(group_positions)
             ).all()
 
             stat_fields = [
@@ -129,8 +135,8 @@ def generate_player_evolution_background(player_id: int) -> None:
             # Get active scoring config for weight-based stat prioritization
             from rugby_stats.models import ScoringConfiguration as ScoringConfigModel
             active_config = db.query(ScoringConfigModel).filter(
-                ScoringConfigModel.is_active == True
-            ).first()
+                ScoringConfigModel.is_active.is_(True)
+            ).options(joinedload(ScoringConfigModel.weights)).first()
 
             ai_service = AIAnalysisService(db)
             analysis = ai_service.generate_player_evolution(
