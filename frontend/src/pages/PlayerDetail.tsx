@@ -7,6 +7,7 @@ import PlayerEvolutionCard from '../components/players/PlayerEvolutionCard'
 import PlayerSummaryComponent from '../components/players/PlayerSummary'
 import StatsChart from '../components/stats/StatsChart'
 import AnimatedPage from '../components/ui/AnimatedPage'
+import { getPositionLabel } from '../constants/positions'
 import type { MatchStat, StatAnomaly } from '../types'
 
 const statCategories = {
@@ -106,7 +107,7 @@ function ExpandableMatchRow({ match, isExpanded, onToggle, anomalies }: Expandab
         <td className="table-cell px-4 py-3 text-dark-300 tabular-nums">
           {match.match_date ? dateFormatter.format(new Date(match.match_date + 'T12:00:00')) : '-'}
         </td>
-        <td className="table-cell px-4 py-3 text-center tabular-nums">#{match.puesto}</td>
+        <td className="table-cell px-4 py-3 text-center tabular-nums text-sm">{getPositionLabel(match.puesto)}</td>
         <td className="table-cell px-4 py-3 text-center tabular-nums">{match.tiempo_juego}'</td>
         <td className="table-cell px-4 py-3 text-right font-semibold text-primary-400 tabular-nums">
           {(match.score || 0).toFixed(1)}

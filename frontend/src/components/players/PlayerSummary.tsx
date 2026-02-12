@@ -1,5 +1,6 @@
 import { User, TrendingUp, Calendar, Clock } from 'lucide-react'
 import CountUp from '../ui/CountUp'
+import { getPositionLabel } from '../../constants/positions'
 import type { PlayerSummary as PlayerSummaryType } from '../../types'
 
 interface PlayerSummaryProps {
@@ -9,9 +10,18 @@ interface PlayerSummaryProps {
 export default function PlayerSummary({ summary }: PlayerSummaryProps) {
   const { player_name, matches_played, total_minutes, avg_puntuacion_final, matches } = summary
 
-  const isForward = matches && matches.length > 0
-    ? matches.some(m => m.puesto >= 1 && m.puesto <= 8)
-    : false
+  // Get most common position
+  const primaryPosition = matches && matches.length > 0
+    ? (() => {
+        const counts: Record<number, number> = {}
+        for (const m of matches) {
+          counts[m.puesto] = (counts[m.puesto] || 0) + 1
+        }
+        return Number(Object.entries(counts).sort(([, a], [, b]) => b - a)[0][0])
+      })()
+    : null
+
+  const isForward = primaryPosition !== null && primaryPosition <= 8
 
   return (
     <div className="card">
@@ -23,15 +33,17 @@ export default function PlayerSummary({ summary }: PlayerSummaryProps) {
         <div className="flex-1">
           <h2 className="text-3xl font-black text-white">{player_name}</h2>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                isForward
-                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                  : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-              }`}
-            >
-              {isForward ? 'Forward' : 'Back'}
-            </span>
+            {primaryPosition !== null && (
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                  isForward
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                }`}
+              >
+                {getPositionLabel(primaryPosition)}
+              </span>
+            )}
           </div>
         </div>
       </div>
