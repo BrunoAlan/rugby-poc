@@ -4,7 +4,6 @@ import logging
 from collections import Counter
 from datetime import datetime
 
-from rugby_stats.constants import get_position_label
 from rugby_stats.database import SessionLocal
 from rugby_stats.models import Match, Player, PlayerMatchStats
 from rugby_stats.services.ai_analysis import AIAnalysisService
@@ -103,7 +102,6 @@ def generate_player_evolution_background(player_id: int) -> None:
 
             positions = [s.puesto for s in player.match_stats if s.puesto]
             most_common_pos = Counter(positions).most_common(1)[0][0]
-            position_group = get_position_label(most_common_pos)
 
             group_stats = db.query(PlayerMatchStats).filter(
                 PlayerMatchStats.puesto == most_common_pos
@@ -128,14 +126,20 @@ def generate_player_evolution_background(player_id: int) -> None:
                     "difference_pct": diff_pct,
                 }
 
+            # Get active scoring config for weight-based stat prioritization
+            from rugby_stats.models import ScoringConfiguration as ScoringConfigModel
+            active_config = db.query(ScoringConfigModel).filter(
+                ScoringConfigModel.is_active == True
+            ).first()
+
             ai_service = AIAnalysisService(db)
             analysis = ai_service.generate_player_evolution(
                 player_name=player.name,
-                position_group=position_group,
                 matches_data=summary["matches"],
                 anomalies=anomalies,
                 position_comparison=position_comparison,
                 position_number=most_common_pos,
+                config=active_config,
             )
 
             player.ai_evolution_analysis = analysis
