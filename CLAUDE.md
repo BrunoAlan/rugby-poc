@@ -48,7 +48,7 @@ docker compose up -d                             # Start PostgreSQL
 
 ### Data Flow
 1. Excel sheets (one per match) → `ExcelImporter` service → PostgreSQL
-2. `ScoringService` calculates weighted scores based on player position (forwards 1-8 vs backs 9-15)
+2. `ScoringService` calculates weighted scores based on player position (1-15, each with individual weights)
 3. FastAPI REST endpoints expose data
 4. React frontend fetches via Axios with React Query caching
 
@@ -113,18 +113,20 @@ PostgreSQL 16 via Docker:
 
 ## Scoring System
 
-See [docs/SCORING.md](docs/SCORING.md) for detailed documentation.
+Weights are assigned **per position** (1-15). Each of the 16 actions has an individual weight for each position, stored in the `scoring_weights` table as one row per `(config_id, action_name, position)`. Default weights: positions 1-8 (forwards) and 9-15 (backs) start with different base values — see `_DEFAULT_WEIGHT_PAIRS` in `models/scoring_config.py`.
 
 **Key constants:**
-- `STANDARD_MATCH_DURATION = 80` - Standard rugby match in minutes
+- `STANDARD_MATCH_DURATION = 70` - Match duration for score normalization
 - `MIN_MINUTES_FOR_NORMALIZATION = 40` - Floor for score calculation (prevents inflation)
 - `MIN_MINUTES_FOR_RANKING = 20` - Minimum minutes to appear in aggregated rankings
 
 **Formula:**
 ```
-score_absoluto = Σ (stat × weight)
-puntuacion_final = (score_absoluto / max(tiempo_juego, 40)) × 80
+score_absoluto = Σ (stat × weight_for_position)
+puntuacion_final = (score_absoluto / max(tiempo_juego, 40)) × 70
 ```
+
+**Weight management:** `PUT /api/scoring/weights/{id}` updates a single weight. Frontend uses position tabs (15 tabs) to edit weights per position.
 
 ## PDF Export
 
