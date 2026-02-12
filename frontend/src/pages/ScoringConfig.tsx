@@ -39,7 +39,7 @@ export default function ScoringConfig() {
     setNewConfigDescription('')
   }
 
-  const handleUpdateWeight = async (weightId: number, data: { forwards_weight: number; backs_weight: number }) => {
+  const handleUpdateWeight = async (weightId: number, data: { weight: number }) => {
     await updateWeightMutation.mutateAsync({ weightId, data })
   }
 
