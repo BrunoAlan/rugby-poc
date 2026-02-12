@@ -372,27 +372,34 @@ class AIAnalysisService:
     def generate_player_evolution(
         self,
         player_name: str,
-        position_group: str,
         matches_data: list[dict],
         anomalies: dict,
         position_comparison: dict,
-        position_number: int | None = None,
+        position_number: int,
+        config: ScoringConfiguration | None = None,
     ) -> str:
-        """Generate AI analysis for a player's evolution."""
+        """Generate AI analysis for a player's evolution using position-group-specific prompts."""
         if not self.settings.can_generate_ai_analysis:
             raise ValueError(
                 "AI analysis is not configured. Set OPENROUTER_API_KEY in .env"
             )
 
-        prompt = self._build_player_evolution_prompt(
-            player_name,
-            position_group,
-            matches_data,
-            anomalies,
-            position_comparison,
-            position_number=position_number,
+        from rugby_stats.constants import get_group_for_position
+
+        group = get_group_for_position(position_number)
+        if not group:
+            raise ValueError(f"No position group found for position {position_number}")
+
+        system_prompt = build_player_evolution_system_prompt(group, config)
+        user_prompt = self._build_player_evolution_prompt(
+            player_name=player_name,
+            group=group,
+            matches_data=matches_data,
+            anomalies=anomalies,
+            position_comparison=position_comparison,
+            config=config,
         )
-        return self._call_openrouter_with_system(prompt, PLAYER_EVOLUTION_SYSTEM_PROMPT)
+        return self._call_openrouter_with_system(user_prompt, system_prompt)
 
     def _build_player_evolution_prompt(
         self,
