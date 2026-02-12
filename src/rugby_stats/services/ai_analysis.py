@@ -36,36 +36,6 @@ Mencioná 2-3 jugadores que brillaron y explicá brevemente por qué.
 ## Recomendaciones
 1-2 sugerencias concretas para el próximo partido."""
 
-PLAYER_EVOLUTION_SYSTEM_PROMPT = """Sos un analista experto de rugby argentino. Tu tarea es analizar la evolución de un jugador a lo largo de múltiples partidos.
-
-IMPORTANTE:
-- Escribí en español rioplatense (Argentina)
-- Usá vocabulario de rugby local
-- Sé conciso pero perspicaz
-- Basate estrictamente en los datos proporcionados
-- El sistema de puntuación asigna pesos diferentes a cada acción según la posición del jugador (1-15). El prompt incluye cuáles son las acciones más importantes para la posición del jugador — usá esa información para contextualizar su rendimiento.
-
-Generá tu análisis con las siguientes secciones usando markdown:
-
-## Progreso General
-Un párrafo evaluando la tendencia general del jugador (mejorando, estable, en baja).
-
-## Fortalezas Consistentes
-Lista de 2-3 stats donde el jugador rinde consistentemente bien.
-
-## Áreas a Mejorar
-Lista de 2-3 stats donde el jugador tiene margen de mejora.
-
-## Alertas del Último Partido
-Comentario sobre las anomalías detectadas en el último partido (tanto positivas como negativas).
-
-## Comparativa con el Equipo
-Breve análisis de cómo se compara con el promedio de su posición.
-
-## Recomendaciones
-2-3 sugerencias concretas para el jugador."""
-
-
 def build_player_evolution_system_prompt(
     group: dict,
     config: ScoringConfiguration | None = None,
