@@ -397,50 +397,55 @@ class AIAnalysisService:
     def _build_player_evolution_prompt(
         self,
         player_name: str,
-        position_group: str,
+        group: dict,
         matches_data: list[dict],
         anomalies: dict,
         position_comparison: dict,
-        position_number: int | None = None,
+        config: ScoringConfiguration | None = None,
     ) -> str:
-        """Build prompt for player evolution analysis."""
+        """Build prompt for player evolution analysis with position-group stat prioritization."""
         lines = [
-            f"# Evolución de {player_name} ({position_group})",
+            f"# Evolución de {player_name} ({group['label']})",
             f"- **Partidos jugados:** {len(matches_data)}",
             "",
         ]
 
-        # Add top weighted stats for this position
-        if position_number:
-            top_weights = self._get_top_weights_for_position(position_number)
-            if top_weights:
-                top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top_weights)
-                lines.append(
-                    f"- **Acciones más valoradas para esta posición:** {top_str}"
-                )
+        # Determine priority stats from config
+        priority_stats: list[str] = []
+        if config:
+            top = self.get_top_weights_for_group(config, group["positions"])
+            priority_stats = [action for action, _ in top]
+            if priority_stats:
+                top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top)
+                lines.append(f"- **Acciones más valoradas para esta posición:** {top_str}")
                 lines.append("")
 
-        lines.extend(
-            [
-                "## Historial de Partidos (orden cronológico)",
-                "",
-            ]
-        )
+        all_stat_fields = [
+            "tackles_positivos", "tackles", "tackles_errados", "portador",
+            "ruck_ofensivos", "pases", "pases_malos", "perdidas",
+            "recuperaciones", "gana_contacto", "quiebres", "penales",
+            "juego_pie", "recepcion_aire_buena", "recepcion_aire_mala", "try_",
+        ]
+        secondary_stats = [s for s in all_stat_fields if s not in priority_stats]
+
+        lines.extend(["## Historial de Partidos (orden cronológico)", ""])
 
         for m in matches_data:
-            lines.append(
-                f"**vs {m['opponent']}** ({m.get('match_date', 'N/A')}, {m['tiempo_juego']:.0f} min, Score: {m['score']:.1f}): "
-                f"Tackles+ {m['tackles_positivos']}, Tackles {m['tackles']}, Tackles err {m['tackles_errados']}, "
-                f"Portador {m['portador']}, Rucks {m['ruck_ofensivos']}, Pases {m['pases']}, "
-                f"Pases malos {m['pases_malos']}, Perdidas {m['perdidas']}, Recup {m['recuperaciones']}, "
-                f"Gana contacto {m['gana_contacto']}, Quiebres {m['quiebres']}, Penales {m['penales']}, "
-                f"Juego pie {m['juego_pie']}, Aire buena {m['recepcion_aire_buena']}, "
-                f"Aire mala {m['recepcion_aire_mala']}, Tries {m['try_']}"
+            header = (
+                f"**vs {m['opponent']}** ({m.get('match_date', 'N/A')}, "
+                f"{m['tiempo_juego']:.0f} min, Score: {m['score']:.1f}):"
             )
+            if priority_stats:
+                pri_parts = [f"{s} {m.get(s, 0)}" for s in priority_stats]
+                sec_parts = [f"{s} {m.get(s, 0)}" for s in secondary_stats]
+                lines.append(header)
+                lines.append(f"  Principales: {', '.join(pri_parts)}")
+                lines.append(f"  Secundarias: {', '.join(sec_parts)}")
+            else:
+                all_parts = [f"{s} {m.get(s, 0)}" for s in all_stat_fields]
+                lines.append(f"{header} {', '.join(all_parts)}")
 
-        lines.append("")
-        lines.append("## Anomalías Detectadas en el Último Partido")
-        lines.append("")
+        lines.extend(["", "## Anomalías Detectadas en el Último Partido", ""])
 
         alerts_found = False
         for stat_name, data in anomalies.items():
@@ -455,9 +460,7 @@ class AIAnalysisService:
         if not alerts_found:
             lines.append("- Sin anomalías significativas")
 
-        lines.append("")
-        lines.append(f"## Comparativa con Promedio de {position_group.title()}")
-        lines.append("")
+        lines.extend(["", f"## Comparativa con Promedio de {group['label']}", ""])
 
         for stat_name, comp in position_comparison.items():
             diff = comp["difference_pct"]
@@ -468,10 +471,7 @@ class AIAnalysisService:
                     f"grupo={comp['group_avg']} ({abs(diff):.0f}% {direction})"
                 )
 
-        lines.append("")
-        lines.append(
-            "Analizá la evolución de este jugador y generá un informe completo."
-        )
+        lines.extend(["", "Analizá la evolución de este jugador y generá un informe completo."])
 
         return "\n".join(lines)
 

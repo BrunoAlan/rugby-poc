@@ -89,3 +89,56 @@ def test_build_system_prompt_has_common_sections():
     assert "Progreso General" in prompt
     assert "Alertas del Último Partido" in prompt
     assert "Recomendaciones" in prompt
+
+
+def test_build_evolution_prompt_prioritizes_stats(db_session):
+    """Priority stats should appear first in match data, secondary stats after."""
+    config = _create_config_with_weights(db_session, {
+        "tackles_positivos": {1: 5.0, 3: 5.0},
+        "ruck_ofensivos": {1: 3.0, 3: 3.0},
+        "portador": {1: 1.5, 3: 1.5},
+        "pases": {1: 0.3, 3: 0.3},
+        "quiebres": {1: 0.0, 3: 0.0},
+    })
+    group = POSITION_GROUPS["pilares"]
+
+    service = AIAnalysisService(db_session)
+    prompt = service._build_player_evolution_prompt(
+        player_name="Test Player",
+        group=group,
+        matches_data=[{
+            "opponent": "RIVAL", "match_date": "01/01/2025",
+            "tiempo_juego": 70, "score": 45.0,
+            "tackles_positivos": 8, "tackles": 5, "tackles_errados": 1,
+            "portador": 6, "ruck_ofensivos": 10, "pases": 2,
+            "pases_malos": 0, "perdidas": 1, "recuperaciones": 3,
+            "gana_contacto": 4, "quiebres": 0, "penales": 1,
+            "juego_pie": 0, "recepcion_aire_buena": 1,
+            "recepcion_aire_mala": 0, "try_": 0,
+        }],
+        anomalies={},
+        position_comparison={},
+        config=config,
+    )
+
+    # "Principales:" should appear before "Secundarias:"
+    assert "Principales:" in prompt
+    assert "Secundarias:" in prompt
+    assert prompt.index("Principales:") < prompt.index("Secundarias:")
+
+
+def test_build_evolution_prompt_uses_group_label_in_comparison(db_session):
+    """Position comparison header should use group label, not generic."""
+    group = POSITION_GROUPS["medios"]
+
+    service = AIAnalysisService(db_session)
+    prompt = service._build_player_evolution_prompt(
+        player_name="Test",
+        group=group,
+        matches_data=[],
+        anomalies={},
+        position_comparison={"pases": {"player_avg": 5.0, "group_avg": 4.0, "difference_pct": 25.0}},
+        config=None,
+    )
+
+    assert "Promedio de Medios" in prompt
