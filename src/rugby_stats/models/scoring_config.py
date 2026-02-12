@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from rugby_stats.models.base import Base, TimestampMixin
@@ -31,11 +31,11 @@ class ScoringConfiguration(Base, TimestampMixin):
 
 
 class ScoringWeight(Base, TimestampMixin):
-    """Weight for a specific action in a scoring configuration."""
+    """Weight for a specific action and position in a scoring configuration."""
 
     __tablename__ = "scoring_weights"
     __table_args__ = (
-        UniqueConstraint("config_id", "action_name", name="uq_config_action"),
+        UniqueConstraint("config_id", "action_name", "position", name="uq_config_action_position"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -43,8 +43,8 @@ class ScoringWeight(Base, TimestampMixin):
         ForeignKey("scoring_configurations.id"), nullable=False
     )
     action_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    forwards_weight: Mapped[float] = mapped_column(Float, nullable=False)
-    backs_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    weight: Mapped[float] = mapped_column(Float, nullable=False)
 
     # Relationships
     configuration: Mapped["ScoringConfiguration"] = relationship(
@@ -52,11 +52,12 @@ class ScoringWeight(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<ScoringWeight(action='{self.action_name}', fwd={self.forwards_weight}, back={self.backs_weight})>"
+        return f"<ScoringWeight(action='{self.action_name}', position={self.position}, weight={self.weight})>"
 
 
-# Default scoring weights as defined in the plan
-DEFAULT_SCORING_WEIGHTS = {
+# Default weights: {action_name: (forwards_value, backs_value)}
+# Positions 1-8 get forwards_value, 9-15 get backs_value
+_DEFAULT_WEIGHT_PAIRS = {
     "tackles_positivos": (5.0, 3.0),
     "tackles": (2.0, 1.5),
     "tackles_errados": (-4.0, -3.0),
@@ -73,4 +74,12 @@ DEFAULT_SCORING_WEIGHTS = {
     "recepcion_aire_buena": (3.0, 5.0),
     "recepcion_aire_mala": (-3.0, -4.0),
     "try_": (10.0, 12.0),
+}
+
+DEFAULT_SCORING_WEIGHTS: dict[str, dict[int, float]] = {
+    action: {
+        pos: fwd if pos <= 8 else back
+        for pos in range(1, 16)
+    }
+    for action, (fwd, back) in _DEFAULT_WEIGHT_PAIRS.items()
 }
