@@ -194,12 +194,17 @@ def player_summary(
 
 
 @app.command()
-def seed_weights():
+def seed_weights(
+    force: bool = typer.Option(False, "--force", "-f", help="Delete existing default config and re-seed"),
+):
     """Seed the default scoring weights into the database."""
     with SessionLocal() as db:
         scoring_service = ScoringService(db)
-        config = scoring_service.seed_default_weights()
-        console.print(f"[green]Default scoring configuration created/verified: {config.name}[/green]")
+        config = scoring_service.seed_default_weights(force=force)
+        if force:
+            console.print(f"[green]Default scoring configuration re-seeded: {config.name}[/green]")
+        else:
+            console.print(f"[green]Default scoring configuration created/verified: {config.name}[/green]")
 
 
 @app.command()

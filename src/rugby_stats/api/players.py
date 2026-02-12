@@ -6,6 +6,7 @@ from threading import Thread
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from rugby_stats.constants import get_position_label
 from rugby_stats.database import get_db
 from rugby_stats.models import Player as PlayerModel
 from rugby_stats.schemas import (
@@ -134,18 +135,12 @@ def get_position_comparison(
         raise HTTPException(status_code=404, detail="No position data for player")
 
     most_common_pos = Counter(positions).most_common(1)[0][0]
-    is_forward = 1 <= most_common_pos <= 8
-    position_group = "forwards" if is_forward else "backs"
+    position_group = get_position_label(most_common_pos)
 
-    # Get all stats for same position group (all players)
-    if is_forward:
-        group_stats = db.query(PlayerMatchStats).filter(
-            PlayerMatchStats.puesto.between(1, 8)
-        ).all()
-    else:
-        group_stats = db.query(PlayerMatchStats).filter(
-            PlayerMatchStats.puesto.between(9, 15)
-        ).all()
+    # Get all stats for same position (all players)
+    group_stats = db.query(PlayerMatchStats).filter(
+        PlayerMatchStats.puesto == most_common_pos
+    ).all()
 
     stat_fields = [
         "tackles_positivos", "tackles", "tackles_errados", "portador",

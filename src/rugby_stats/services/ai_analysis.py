@@ -6,7 +6,9 @@ import httpx
 from sqlalchemy.orm import Session
 
 from rugby_stats.config import get_settings
+from rugby_stats.constants import POSITION_NAMES, get_position_label
 from rugby_stats.models import Match, PlayerMatchStats, ScoringConfiguration
+from rugby_stats.models.scoring_config import DEFAULT_SCORING_WEIGHTS
 
 
 SYSTEM_PROMPT = """Sos un analista experto de rugby argentino. Tu tarea es analizar partidos y rendimientos de jugadores usando datos estadísticos.
@@ -41,6 +43,7 @@ IMPORTANTE:
 - Usá vocabulario de rugby local
 - Sé conciso pero perspicaz
 - Basate estrictamente en los datos proporcionados
+- El sistema de puntuación asigna pesos diferentes a cada acción según la posición del jugador (1-15). El prompt incluye cuáles son las acciones más importantes para la posición del jugador — usá esa información para contextualizar su rendimiento.
 
 Generá tu análisis con las siguientes secciones usando markdown:
 
@@ -167,6 +170,17 @@ class AIAnalysisService:
             "",
         ]
 
+        # Scoring context: show top-weighted actions per position present in this match
+        positions_in_match = sorted({s.puesto for s in player_stats if s.puesto})
+        if positions_in_match:
+            prompt_lines.append("## Contexto de Puntuación (acciones más valoradas por posición)")
+            prompt_lines.append("")
+            for pos in positions_in_match:
+                top_weights = self._get_top_weights_for_position(pos)
+                top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top_weights)
+                prompt_lines.append(f"- **{get_position_label(pos)}**: {top_str}")
+            prompt_lines.append("")
+
         # Separate forwards and backs
         forwards = [s for s in player_stats if s.puesto and 1 <= s.puesto <= 8]
         backs = [s for s in player_stats if s.puesto and 9 <= s.puesto <= 15]
@@ -197,13 +211,25 @@ class AIAnalysisService:
 
         return "\n".join(prompt_lines)
 
+    @staticmethod
+    def _get_top_weights_for_position(position: int, top_n: int = 3) -> list[tuple[str, float]]:
+        """Return the top N positive-weighted actions for a position, sorted by weight desc."""
+        weights = [
+            (action, w[position])
+            for action, w in DEFAULT_SCORING_WEIGHTS.items()
+            if w.get(position, 0) > 0
+        ]
+        weights.sort(key=lambda x: x[1], reverse=True)
+        return weights[:top_n]
+
     def _format_player_stats(self, stat: PlayerMatchStats) -> str:
         """Format a player's statistics as a string."""
         player_name = stat.player.name if stat.player else "Desconocido"
         score = f"{stat.puntuacion_final:.1f}" if stat.puntuacion_final else "N/A"
+        pos_label = get_position_label(stat.puesto) if stat.puesto else "?"
 
         return (
-            f"**{player_name}** (#{stat.puesto}, {stat.tiempo_juego:.0f} min, Score: {score}): "
+            f"**{player_name}** ({pos_label}, {stat.tiempo_juego:.0f} min, Score: {score}): "
             f"Tackles+ {stat.tackles_positivos}, Tackles {stat.tackles}, Tackles err {stat.tackles_errados}, "
             f"Portador {stat.portador}, Rucks {stat.ruck_ofensivos}, Pases {stat.pases}, "
             f"Pases malos {stat.pases_malos}, Perdidas {stat.perdidas}, Recup {stat.recuperaciones}, "
@@ -255,13 +281,15 @@ class AIAnalysisService:
         matches_data: list[dict],
         anomalies: dict,
         position_comparison: dict,
+        position_number: int | None = None,
     ) -> str:
         """Generate AI analysis for a player's evolution."""
         if not self.settings.can_generate_ai_analysis:
             raise ValueError("AI analysis is not configured. Set OPENROUTER_API_KEY in .env")
 
         prompt = self._build_player_evolution_prompt(
-            player_name, position_group, matches_data, anomalies, position_comparison
+            player_name, position_group, matches_data, anomalies, position_comparison,
+            position_number=position_number,
         )
         return self._call_openrouter_with_system(prompt, PLAYER_EVOLUTION_SYSTEM_PROMPT)
 
@@ -272,15 +300,27 @@ class AIAnalysisService:
         matches_data: list[dict],
         anomalies: dict,
         position_comparison: dict,
+        position_number: int | None = None,
     ) -> str:
         """Build prompt for player evolution analysis."""
         lines = [
-            f"# Evolución de {player_name} ({position_group.title()})",
+            f"# Evolución de {player_name} ({position_group})",
             f"- **Partidos jugados:** {len(matches_data)}",
             "",
+        ]
+
+        # Add top weighted stats for this position
+        if position_number:
+            top_weights = self._get_top_weights_for_position(position_number)
+            if top_weights:
+                top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top_weights)
+                lines.append(f"- **Acciones más valoradas para esta posición:** {top_str}")
+                lines.append("")
+
+        lines.extend([
             "## Historial de Partidos (orden cronológico)",
             "",
-        ]
+        ])
 
         for m in matches_data:
             lines.append(

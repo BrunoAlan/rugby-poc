@@ -23,20 +23,25 @@ def test_seed_default_weights(db_session):
 
 
 def test_seed_default_weights_position_values(db_session):
-    """Test that seeded weights have correct values per position."""
+    """Test that seeded weights have correct per-position values."""
     service = ScoringService(db_session)
     config = service.seed_default_weights()
 
-    # Find tackles_positivos weights
-    tp_weights = [w for w in config.weights if w.action_name == "tackles_positivos"]
-    assert len(tp_weights) == 15
+    weights_by = {(w.action_name, w.position): w.weight for w in config.weights}
 
-    # Forwards (1-8) should get 5.0, backs (9-15) should get 3.0
-    for w in tp_weights:
-        if w.position <= 8:
-            assert w.weight == 5.0, f"Position {w.position} should be 5.0"
-        else:
-            assert w.weight == 3.0, f"Position {w.position} should be 3.0"
+    # Openside flanker (7): highest tackles
+    assert weights_by[("tackles_positivos", 7)] == 6.5
+    # Scrum-half (9): highest passing
+    assert weights_by[("pases", 9)] == 2.0
+    # Fly-half (10): highest kicking
+    assert weights_by[("juego_pie", 10)] == 4.0
+    # Fullback (15): highest aerial
+    assert weights_by[("recepcion_aire_buena", 15)] == 5.5
+    # Wings (11/14): highest tries and breaks
+    assert weights_by[("try_", 11)] == 12.0
+    assert weights_by[("quiebres", 14)] == 7.5
+    # Props (1/3): harsh scrum penalties
+    assert weights_by[("penales", 1)] == -5.5
 
 
 def test_calculate_score_forward(db_session):
@@ -66,11 +71,11 @@ def test_calculate_score_forward(db_session):
 
     score_abs, score_final = service.calculate_score(stats)
 
-    # Position 1 weights: tackles_positivos=5.0, tackles=2.0, try_=10.0
-    # Expected: 5*5.0 + 10*2.0 + 1*10.0 = 25 + 20 + 10 = 55
-    assert score_abs == 55.0
-    # Normalized: (55 / 80) * 70 = 48.125
-    assert score_final == pytest.approx(48.125)
+    # Position 1 weights: tackles_positivos=4.5, tackles=2.0, try_=8.0
+    # Expected: 5*4.5 + 10*2.0 + 1*8.0 = 22.5 + 20 + 8 = 50.5
+    assert score_abs == 50.5
+    # Normalized: (50.5 / 80) * 70 = 44.1875
+    assert score_final == pytest.approx(44.1875)
 
 
 def test_calculate_score_back(db_session):
@@ -100,11 +105,11 @@ def test_calculate_score_back(db_session):
 
     score_abs, score_final = service.calculate_score(stats)
 
-    # Position 10 weights: pases=1.2, quiebres=7.0, try_=12.0
-    # Expected: 20*1.2 + 2*7.0 + 1*12.0 = 24 + 14 + 12 = 50
-    assert score_abs == 50.0
-    # Normalized: (50 / 80) * 70 = 43.75
-    assert score_final == pytest.approx(43.75)
+    # Position 10 weights: pases=1.8, quiebres=6.0, try_=10.5
+    # Expected: 20*1.8 + 2*6.0 + 1*10.5 = 36 + 12 + 10.5 = 58.5
+    assert score_abs == 58.5
+    # Normalized: (58.5 / 80) * 70 = 51.1875
+    assert score_final == pytest.approx(51.1875)
 
 
 def test_different_positions_get_different_weights(db_session):
@@ -147,10 +152,10 @@ def test_different_positions_get_different_weights(db_session):
 
     score_back, _ = service.calculate_score(stats_back)
 
-    # Position 1: 5*5.0 + 10*0.5 = 30.0
-    assert score_fwd == 30.0
-    # Position 10: 5*3.0 + 10*1.2 = 27.0
-    assert score_back == 27.0
+    # Position 1: 5*4.5 + 10*0.3 = 25.5
+    assert score_fwd == 25.5
+    # Position 10: 5*3.0 + 10*1.8 = 33.0
+    assert score_back == 33.0
     assert score_fwd != score_back
 
 
@@ -179,9 +184,10 @@ def test_score_normalization(db_session):
 
     score_abs, score_final = service.calculate_score(stats)
 
-    assert score_abs == 25.0
-    # Normalized: (25 / 40) * 70 = 43.75
-    assert score_final == pytest.approx(43.75)
+    # Position 1: 5*4.5 = 22.5
+    assert score_abs == 22.5
+    # Normalized: (22.5 / 40) * 70 = 39.375
+    assert score_final == pytest.approx(39.375)
 
 
 def test_recalculate_all_scores(db_session):
@@ -212,5 +218,5 @@ def test_recalculate_all_scores(db_session):
     count = service.recalculate_all_scores()
     assert count == 2
 
-    assert stats1.score_absoluto == 50.0  # 10 * 5.0
-    assert stats2.score_absoluto == 25.0  # 5 * 5.0
+    assert stats1.score_absoluto == 45.0  # 10 * 4.5
+    assert stats2.score_absoluto == 22.5  # 5 * 4.5

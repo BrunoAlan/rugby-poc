@@ -18,15 +18,26 @@ class ScoringService:
     def __init__(self, db: Session):
         self.db = db
 
-    def seed_default_weights(self) -> ScoringConfiguration:
-        """Create default scoring configuration with predefined weights."""
+    def seed_default_weights(self, *, force: bool = False) -> ScoringConfiguration:
+        """Create default scoring configuration with predefined weights.
+
+        Args:
+            force: If True, delete existing 'default' config and re-seed.
+        """
         existing = (
             self.db.query(ScoringConfiguration)
             .filter(ScoringConfiguration.name == "default")
             .first()
         )
         if existing:
-            return existing
+            if not force:
+                return existing
+            # Nullify FK references from player_match_stats before deleting
+            self.db.query(PlayerMatchStats).filter(
+                PlayerMatchStats.scoring_config_id == existing.id
+            ).update({PlayerMatchStats.scoring_config_id: None})
+            self.db.delete(existing)
+            self.db.flush()
 
         config = ScoringConfiguration(
             name="default",

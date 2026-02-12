@@ -4,8 +4,7 @@ import { Search, X, GitCompare } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayersWithStats } from '../hooks/usePlayers'
 import AnimatedPage from '../components/ui/AnimatedPage'
-
-const POSITIONS = Array.from({ length: 15 }, (_, i) => i + 1)
+import { ALL_POSITIONS, getPositionLabel } from '../constants/positions'
 
 export default function Players() {
   const { data: players, isLoading } = usePlayersWithStats()
@@ -99,9 +98,9 @@ export default function Players() {
           className="input w-full sm:w-48"
         >
           <option value="">Todas las posiciones</option>
-          {POSITIONS.map((pos) => (
+          {ALL_POSITIONS.map((pos) => (
             <option key={pos} value={pos}>
-              #{pos} - {pos <= 8 ? 'Forward' : 'Back'}
+              {getPositionLabel(pos)}
             </option>
           ))}
         </select>
@@ -189,7 +188,7 @@ export default function Players() {
                         </Link>
                       </td>
                       <td className="table-cell px-4 py-3 text-center text-dark-300 tabular-nums">
-                        {player.primary_position ? `#${player.primary_position}` : '-'}
+                        {player.primary_position ? getPositionLabel(player.primary_position) : '-'}
                       </td>
                       <td className="table-cell px-4 py-3 text-center text-dark-300 tabular-nums">
                         {player.matches_played}
