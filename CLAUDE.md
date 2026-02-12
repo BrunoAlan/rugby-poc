@@ -186,8 +186,8 @@ Match reports can be downloaded as PDF from the match detail page. The report in
 
 Player detail page shows evolution analysis and anomaly alerts:
 - **Anomaly Detection**: `AnomalyDetectionService` compares each stat in the last match against the player's historical median. Stats grouped by volatility (25%/30%/50% thresholds). Negative stats (tackles_errados, pases_malos, etc.) have inverted alert logic.
-- **AI Evolution Analysis**: On-demand analysis via OpenRouter, cached on Player model. Invalidated when new matches are imported (compares `ai_evolution_match_count` vs actual match count). Generated in background thread.
-- **Position Comparison**: Compares player averages against their position group (forwards/backs) averages.
+- **AI Evolution Analysis**: On-demand analysis via OpenRouter, cached on Player model. Invalidated when new matches are imported (compares `ai_evolution_match_count` vs actual match count). Generated in background thread. Uses **position-group-specific prompts** — 7 groups (Pilares, Hooker, 2da Línea, Tercera Línea, Medios, Centros, Back 3) defined in `constants.py` (`POSITION_GROUPS`), each with custom system prompt (role description + group-specific output sections) and stat prioritization derived from active `ScoringConfiguration` weights.
+- **Position Comparison**: Compares player averages against their position group averages (all positions in the group, e.g., pilares 1+3).
 - **Player PDF Report**: Exportable report with score evolution table, stats trends with alert highlighting, position comparison, and AI analysis.
 
 **Frontend components:**

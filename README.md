@@ -164,7 +164,7 @@ The player detail page includes:
 
 Match and player analyses are generated via the OpenRouter API:
 - **Match analysis**: Generated on import (with `--ai` flag) or on-demand via the API
-- **Player evolution**: On-demand analysis cached on the Player model; invalidated when new matches are imported
+- **Player evolution**: On-demand analysis cached on the Player model; invalidated when new matches are imported. Uses position-group-specific prompts (7 groups: Pilares, Hooker, 2da Línea, Tercera Línea, Medios, Centros, Back 3) with custom output sections and stat prioritization from active scoring weights
 - Background thread processing to avoid blocking requests
 
 ## Running Tests
