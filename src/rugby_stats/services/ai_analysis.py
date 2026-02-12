@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from rugby_stats.config import get_settings
-from rugby_stats.constants import POSITION_NAMES, get_position_label
+from rugby_stats.constants import get_position_label
 from rugby_stats.models import Match, PlayerMatchStats, ScoringConfiguration
 from rugby_stats.models.scoring_config import DEFAULT_SCORING_WEIGHTS
 
@@ -98,7 +98,9 @@ class AIAnalysisService:
             httpx.HTTPError: If the API call fails
         """
         if not self.settings.can_generate_ai_analysis:
-            raise ValueError("AI analysis is not configured. Set OPENROUTER_API_KEY in .env")
+            raise ValueError(
+                "AI analysis is not configured. Set OPENROUTER_API_KEY in .env"
+            )
 
         prompt = self._build_analysis_prompt(match, player_stats, scoring_config)
         return self._call_openrouter(prompt)
@@ -155,10 +157,18 @@ class AIAnalysisService:
             The formatted prompt string
         """
         # Match info
-        match_date = match.match_date.strftime("%d/%m/%Y") if match.match_date else "Fecha desconocida"
+        match_date = (
+            match.match_date.strftime("%d/%m/%Y")
+            if match.match_date
+            else "Fecha desconocida"
+        )
         location = match.location or "Desconocido"
         result = match.result or "Desconocido"
-        score = f"{match.our_score} - {match.opponent_score}" if match.our_score is not None else "Sin marcador"
+        score = (
+            f"{match.our_score} - {match.opponent_score}"
+            if match.our_score is not None
+            else "Sin marcador"
+        )
 
         prompt_lines = [
             "# Datos del Partido",
@@ -173,7 +183,9 @@ class AIAnalysisService:
         # Scoring context: show top-weighted actions per position present in this match
         positions_in_match = sorted({s.puesto for s in player_stats if s.puesto})
         if positions_in_match:
-            prompt_lines.append("## Contexto de Puntuación (acciones más valoradas por posición)")
+            prompt_lines.append(
+                "## Contexto de Puntuación (acciones más valoradas por posición)"
+            )
             prompt_lines.append("")
             for pos in positions_in_match:
                 top_weights = self._get_top_weights_for_position(pos)
@@ -207,12 +219,16 @@ class AIAnalysisService:
             prompt_lines.append(self._format_team_totals(player_stats))
             prompt_lines.append("")
 
-        prompt_lines.append("Analizá estos datos y generá un informe completo del partido.")
+        prompt_lines.append(
+            "Analizá estos datos y generá un informe completo del partido."
+        )
 
         return "\n".join(prompt_lines)
 
     @staticmethod
-    def _get_top_weights_for_position(position: int, top_n: int = 3) -> list[tuple[str, float]]:
+    def _get_top_weights_for_position(
+        position: int, top_n: int = 3
+    ) -> list[tuple[str, float]]:
         """Return the top N positive-weighted actions for a position, sorted by weight desc."""
         weights = [
             (action, w[position])
@@ -221,6 +237,28 @@ class AIAnalysisService:
         ]
         weights.sort(key=lambda x: x[1], reverse=True)
         return weights[:top_n]
+
+    @staticmethod
+    def get_top_weights_for_group(
+        config: ScoringConfiguration,
+        group_positions: list[int],
+        top_n: int = 5,
+    ) -> list[tuple[str, float]]:
+        """Return the top N positive-weighted actions for a position group from a scoring config.
+
+        Averages each action's weight across the group's positions.
+        """
+        action_avgs: dict[str, list[float]] = {}
+        for w in config.weights:
+            if w.position in group_positions and w.weight > 0:
+                action_avgs.setdefault(w.action_name, []).append(w.weight)
+
+        averaged = [
+            (action, sum(vals) / len(vals))
+            for action, vals in action_avgs.items()
+        ]
+        averaged.sort(key=lambda x: x[1], reverse=True)
+        return averaged[:top_n]
 
     def _format_player_stats(self, stat: PlayerMatchStats) -> str:
         """Format a player's statistics as a string."""
@@ -285,10 +323,16 @@ class AIAnalysisService:
     ) -> str:
         """Generate AI analysis for a player's evolution."""
         if not self.settings.can_generate_ai_analysis:
-            raise ValueError("AI analysis is not configured. Set OPENROUTER_API_KEY in .env")
+            raise ValueError(
+                "AI analysis is not configured. Set OPENROUTER_API_KEY in .env"
+            )
 
         prompt = self._build_player_evolution_prompt(
-            player_name, position_group, matches_data, anomalies, position_comparison,
+            player_name,
+            position_group,
+            matches_data,
+            anomalies,
+            position_comparison,
             position_number=position_number,
         )
         return self._call_openrouter_with_system(prompt, PLAYER_EVOLUTION_SYSTEM_PROMPT)
@@ -314,13 +358,17 @@ class AIAnalysisService:
             top_weights = self._get_top_weights_for_position(position_number)
             if top_weights:
                 top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top_weights)
-                lines.append(f"- **Acciones más valoradas para esta posición:** {top_str}")
+                lines.append(
+                    f"- **Acciones más valoradas para esta posición:** {top_str}"
+                )
                 lines.append("")
 
-        lines.extend([
-            "## Historial de Partidos (orden cronológico)",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Historial de Partidos (orden cronológico)",
+                "",
+            ]
+        )
 
         for m in matches_data:
             lines.append(
@@ -364,7 +412,9 @@ class AIAnalysisService:
                 )
 
         lines.append("")
-        lines.append("Analizá la evolución de este jugador y generá un informe completo.")
+        lines.append(
+            "Analizá la evolución de este jugador y generá un informe completo."
+        )
 
         return "\n".join(lines)
 
