@@ -19,10 +19,15 @@ uv run uvicorn rugby_stats.main:app --reload    # Start API server (port 8000)
 
 ### CLI Commands
 ```bash
-uv run rugby import-excel data/Partidos.xlsx    # Import Excel data
+uv run rugby import-excel data/Partidos.xlsx    # Import Excel data (--ai flag to generate AI analysis)
 uv run rugby recalculate-scores                 # Recalculate all player scores
-uv run rugby seed-weights                       # Seed default scoring weights
-uv run rugby show-rankings                      # Display rankings in terminal
+uv run rugby seed-weights                       # Seed default scoring weights (--force to overwrite)
+uv run rugby show-rankings                      # Display rankings in terminal (--match, --opponent, --position, --limit)
+uv run rugby player-summary "Player Name"       # Show player performance summary across all matches
+uv run rugby list-players                       # List all players in database
+uv run rugby list-matches                       # List all matches in database
+uv run rugby reset-db                           # Reset database (drop tables + re-migrate, --force to skip prompt)
+uv run rugby regenerate-analysis <match_id>     # Regenerate AI analysis for a specific match
 ```
 
 ### Frontend (pnpm)
@@ -41,10 +46,11 @@ docker compose up -d                             # Start PostgreSQL
 ## Architecture
 
 ### Tech Stack
-- **Backend**: FastAPI, SQLAlchemy 2.0, PostgreSQL, Alembic, Pydantic
-- **Frontend**: React 18, TypeScript, Vite, TailwindCSS, React Query, React Router
+- **Backend**: FastAPI, SQLAlchemy 2.0, PostgreSQL, Alembic, Pydantic, httpx
+- **Frontend**: React 18, TypeScript, Vite, TailwindCSS, React Query, React Router, Recharts, Framer Motion, React Markdown, Lucide React, React Dropzone
 - **Data Processing**: pandas, openpyxl for Excel import
 - **PDF Generation**: reportlab for match report exports
+- **AI**: OpenRouter API via httpx for match and player analysis
 
 ### Data Flow
 1. Excel sheets (one per match) → `ExcelImporter` service → PostgreSQL
@@ -56,9 +62,13 @@ docker compose up -d                             # Start PostgreSQL
 ```
 models/          # SQLAlchemy ORM models
 api/             # FastAPI route handlers
-services/        # Business logic (importer.py, scoring.py, pdf_generator.py, anomaly_detection.py, ai_analysis.py)
+services/        # Business logic (importer.py, scoring.py, pdf_generator.py, anomaly_detection.py, ai_analysis.py, background_tasks.py)
 schemas/         # Pydantic request/response models
 cli/             # Typer CLI commands
+config.py        # Configuration settings (pydantic-settings)
+constants.py     # Application constants
+database.py      # Database connection and session management
+main.py          # FastAPI application entry point
 ```
 
 ### Frontend Structure (`frontend/src/`)
@@ -68,6 +78,8 @@ hooks/           # React Query hooks (usePlayers, useRankings, etc.)
 types/           # TypeScript interfaces
 components/      # UI components by domain (players/, stats/, scoring/)
 pages/           # Route-level page components
+constants/       # Application constants
+config/          # Configuration files
 ```
 
 ### Key Models
@@ -77,17 +89,48 @@ pages/           # Route-level page components
 - **ScoringConfiguration/Weight**: position-based multipliers for score calculation
 
 ### API Endpoints
-- `GET /api/players/with-stats` - Players with aggregated stats
-- `GET /api/players/name/{name}/summary` - Detailed player match history
-- `GET /api/players/{id}/anomalies?mode=all|recent` - Anomaly detection for last match
-- `GET /api/players/{id}/position-comparison` - Player vs position group averages
-- `GET /api/players/{id}/evolution-analysis` - Cached AI evolution analysis
-- `POST /api/players/{id}/evolution-analysis` - Trigger AI evolution analysis generation
-- `GET /api/stats/rankings?match_id=X` - Rankings (aggregated if no match_id)
-- `GET /api/matches/` - Match list
-- `POST /api/imports/excel` - Upload Excel file
-- `GET /api/exports/matches/{match_id}/pdf` - Download match report as PDF
-- `GET /api/exports/players/{id}/report` - Download player evolution report as PDF
+
+**Players** (`/api/players`):
+- `GET /` - List all players (pagination: skip, limit)
+- `GET /with-stats` - Players with aggregated stats
+- `GET /{id}` - Get specific player
+- `GET /name/{name}/summary` - Detailed player match history
+- `GET /{id}/anomalies?mode=all|recent` - Anomaly detection for last match
+- `GET /{id}/position-comparison` - Player vs position group averages
+- `GET /{id}/evolution-analysis` - Cached AI evolution analysis
+- `POST /{id}/evolution-analysis` - Trigger AI evolution analysis generation
+- `POST /` - Create new player
+- `DELETE /{id}` - Delete player
+
+**Stats** (`/api/stats`):
+- `GET /` - List player match statistics (filters: player_id, match_id)
+- `GET /rankings` - Rankings (filters: match_id, opponent, team, position_type; min_minutes)
+- `GET /{id}` - Get specific player match stats
+
+**Matches** (`/api/matches`):
+- `GET /teams` - List all unique teams
+- `GET /` - List all matches (filters: opponent, team)
+- `GET /{id}` - Get specific match
+- `POST /` - Create new match
+- `DELETE /{id}` - Delete match
+
+**Imports** (`/api/imports`):
+- `POST /upload` - Upload Excel file and import match data (body: file, generate_ai: bool)
+- `GET /template` - Download Excel import template
+
+**Exports** (`/api/exports`):
+- `GET /matches/{id}/pdf` - Download match report as PDF
+- `GET /players/{id}/report` - Download player evolution report as PDF
+
+**Scoring** (`/api/scoring`):
+- `GET /configurations` - List all scoring configurations
+- `GET /configurations/active` - Get active configuration with weights
+- `GET /configurations/{id}` - Get specific configuration with weights
+- `POST /configurations` - Create new scoring configuration
+- `POST /configurations/{id}/activate` - Activate configuration (deactivates others)
+- `POST /seed-defaults` - Seed default scoring weights
+- `PUT /weights/{id}` - Update single weight value
+- `POST /recalculate` - Recalculate all player scores
 
 ## Database
 
@@ -113,7 +156,7 @@ PostgreSQL 16 via Docker:
 
 ## Scoring System
 
-Weights are assigned **per position** (1-15). Each of the 16 actions has an individual weight for each position, stored in the `scoring_weights` table as one row per `(config_id, action_name, position)`. Default weights: positions 1-8 (forwards) and 9-15 (backs) start with different base values — see `_DEFAULT_WEIGHT_PAIRS` in `models/scoring_config.py`.
+Weights are assigned **per position** (1-15). Each of the 16 actions has an individual weight for each position, stored in the `scoring_weights` table as one row per `(config_id, action_name, position)`. Default weights: positions 1-8 (forwards) and 9-15 (backs) start with different base values — see `DEFAULT_SCORING_WEIGHTS` in `models/scoring_config.py`.
 
 **Key constants:**
 - `STANDARD_MATCH_DURATION = 70` - Match duration for score normalization
