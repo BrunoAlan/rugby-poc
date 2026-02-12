@@ -175,8 +175,8 @@ export interface ScoringWeight {
   id: number;
   config_id: number;
   action_name: string;
-  forwards_weight: number;
-  backs_weight: number;
+  position: number;
+  weight: number;
 }
 
 export interface ScoringConfigCreate {
@@ -185,8 +185,7 @@ export interface ScoringConfigCreate {
 }
 
 export interface WeightUpdate {
-  forwards_weight: number;
-  backs_weight: number;
+  weight: number;
 }
 
 // Rankings types
