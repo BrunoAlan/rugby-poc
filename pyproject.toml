@@ -42,3 +42,8 @@ packages = ["src/rugby_stats"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.1",
+]

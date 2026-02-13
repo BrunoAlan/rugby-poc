@@ -13,7 +13,9 @@ router = APIRouter()
 @router.get("/teams", response_model=list[str])
 def list_teams(db: Session = Depends(get_db)):
     """Lista todos los equipos únicos."""
-    teams = db.query(MatchModel.team).filter(MatchModel.team.isnot(None)).distinct().all()
+    teams = (
+        db.query(MatchModel.team).filter(MatchModel.team.isnot(None)).distinct().all()
+    )
     return sorted([t[0] for t in teams])
 
 
