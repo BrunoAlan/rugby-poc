@@ -69,21 +69,42 @@ export default function PlayerSummary({ summary, playerId, onNameChange }: Playe
   }
 
   return (
-    <div className="card relative">
+    <div className="card">
       <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 shadow-glow-primary">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 shadow-glow-primary">
           <User className="h-10 w-10 text-white" />
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {isEditing ? (
             <>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="bg-dark-900/60 border border-dark-700/30 rounded-lg px-3 py-2 text-white text-3xl font-black focus:border-primary-500 focus:outline-none w-full"
-              />
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="bg-dark-900/60 border border-dark-700/30 rounded-lg px-3 py-2 text-white text-3xl font-black focus:border-primary-500 focus:outline-none flex-1 min-w-0"
+                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleSave}
+                    disabled={updatePlayer.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary-500/15 px-3 py-1.5 text-sm font-medium text-primary-400 border border-primary-500/30 hover:bg-primary-500/25 hover:border-primary-400/50 transition-all"
+                    title="Guardar"
+                  >
+                    <Check className="h-4 w-4" />
+                    Guardar
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-dark-700/50 px-3 py-1.5 text-sm font-medium text-dark-300 border border-dark-600/50 hover:bg-dark-700 hover:text-white transition-all"
+                    title="Cancelar"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancelar
+                  </button>
+                </div>
+              </div>
               {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -110,7 +131,19 @@ export default function PlayerSummary({ summary, playerId, onNameChange }: Playe
             </>
           ) : (
             <>
-              <h2 className="text-3xl font-black text-white">{player_name}</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-black text-white flex-1 min-w-0 truncate">{player_name}</h2>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-dark-700/40 px-3 py-1.5 text-sm font-medium text-dark-300 border border-dark-600/30 hover:bg-dark-700 hover:text-primary-400 hover:border-primary-500/30 transition-all"
+                    title="Editar"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar
+                  </button>
+                </div>
+              </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {primaryPosition !== null && (
                   <span
@@ -133,37 +166,6 @@ export default function PlayerSummary({ summary, playerId, onNameChange }: Playe
                 </span>
               </div>
             </>
-          )}
-        </div>
-
-        {/* Edit / Save / Cancel buttons */}
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-          {isEditing ? (
-            <>
-              <button
-                onClick={handleSave}
-                disabled={updatePlayer.isPending}
-                className="text-dark-400 hover:text-primary-400 transition-colors"
-                title="Guardar"
-              >
-                <Check className="h-5 w-5" />
-              </button>
-              <button
-                onClick={handleCancel}
-                className="text-dark-400 hover:text-primary-400 transition-colors"
-                title="Cancelar"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="text-dark-400 hover:text-primary-400 transition-colors"
-              title="Editar"
-            >
-              <Pencil className="h-5 w-5" />
-            </button>
           )}
         </div>
       </div>

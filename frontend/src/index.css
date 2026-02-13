@@ -50,6 +50,13 @@
     @apply block w-full rounded-lg border border-dark-600 bg-dark-900/80 px-3 py-2 text-sm text-gray-100 placeholder:text-dark-400 focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-400;
   }
 
+  select.input {
+    @apply pr-9 appearance-none bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.625rem center;
+    background-size: 1rem;
+  }
+
   .table-header {
     @apply bg-dark-900/60 text-left text-xs font-semibold uppercase tracking-widest text-primary-400;
   }
