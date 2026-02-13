@@ -8,9 +8,10 @@ import type { PlayerSummary as PlayerSummaryType } from '../../types'
 interface PlayerSummaryProps {
   summary: PlayerSummaryType
   playerId: number
+  onNameChange?: (newName: string) => void
 }
 
-export default function PlayerSummary({ summary, playerId }: PlayerSummaryProps) {
+export default function PlayerSummary({ summary, playerId, onNameChange }: PlayerSummaryProps) {
   const { player_name, matches_played, total_minutes, avg_puntuacion_final, matches, weight_kg, height_cm } = summary
 
   const [isEditing, setIsEditing] = useState(false)
@@ -46,6 +47,9 @@ export default function PlayerSummary({ summary, playerId }: PlayerSummaryProps)
         },
       })
       setIsEditing(false)
+      if (editName !== player_name && onNameChange) {
+        onNameChange(editName)
+      }
     } catch (err: unknown) {
       const axiosError = err as { response?: { status?: number } }
       if (axiosError.response?.status === 409) {

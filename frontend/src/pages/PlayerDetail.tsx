@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, FileDown } from 'lucide-react'
 import { usePlayerAnomalies, usePlayerSummary } from '../hooks/usePlayers'
 import PlayerAlertsCard from '../components/players/PlayerAlertsCard'
@@ -151,6 +151,7 @@ function ExpandableMatchRow({ match, isExpanded, onToggle, anomalies }: Expandab
 export default function PlayerDetail() {
   const { name } = useParams<{ name: string }>()
   const decodedName = decodeURIComponent(name || '')
+  const navigate = useNavigate()
   const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set())
 
   const { data: summary, isLoading } = usePlayerSummary(decodedName)
@@ -224,7 +225,11 @@ export default function PlayerDetail() {
       </div>
 
       {/* Player Summary */}
-      <PlayerSummaryComponent summary={summary} playerId={summary.player_id} />
+      <PlayerSummaryComponent
+        summary={summary}
+        playerId={summary.player_id}
+        onNameChange={(newName) => navigate(`/players/${encodeURIComponent(newName)}`, { replace: true })}
+      />
 
       {/* Player Alerts */}
       {summary.player_id && (
