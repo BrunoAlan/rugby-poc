@@ -66,7 +66,7 @@ services/        # Business logic (importer.py, scoring.py, pdf_generator.py, an
 schemas/         # Pydantic request/response models
 cli/             # Typer CLI commands
 config.py        # Configuration settings (pydantic-settings)
-constants.py     # Application constants
+constants.py     # Application constants (STAT_FIELDS, STAT_LABELS, DEFAULT_SCORING_WEIGHTS, POSITION_GROUPS)
 database.py      # Database connection and session management
 main.py          # FastAPI application entry point
 ```
@@ -153,11 +153,14 @@ PostgreSQL 16 via Docker:
 
 - Frontend proxies `/api` requests to backend via Vite config
 - Rankings endpoint aggregates by player when no match_id filter, returns per-match stats when filtered
-- PlayerMatchStats has 16 stat fields from Excel: tackles_positivos, tackles, tackles_errados, portador, ruck_ofensivos, pases, pases_malos, perdidas, recuperaciones, gana_contacto, quiebres, penales, juego_pie, recepcion_aire_buena, recepcion_aire_mala, try_
+- The 16 stat fields are centralized in `constants.py` as `STAT_FIELDS` — always reference this list instead of hardcoding field names
+- `STAT_LABELS` in `constants.py` provides human-readable labels for each stat field
+- Position range constants (`FORWARD_POSITION_MIN/MAX`, `BACK_POSITION_MIN/MAX`) are in `constants.py` — avoid magic numbers 1-8, 9-15
+- Business logic (rankings, position comparison, stats aggregation) lives in services, not in API endpoints — endpoints should delegate to `ScoringService`
 
 ## Scoring System
 
-Weights are assigned **per position** (1-15). Each of the 16 actions has an individual weight for each position, stored in the `scoring_weights` table as one row per `(config_id, action_name, position)`. Default weights: positions 1-8 (forwards) and 9-15 (backs) start with different base values — see `DEFAULT_SCORING_WEIGHTS` in `models/scoring_config.py`.
+Weights are assigned **per position** (1-15). Each of the 16 actions has an individual weight for each position, stored in the `scoring_weights` table as one row per `(config_id, action_name, position)`. Default weights: positions 1-8 (forwards) and 9-15 (backs) start with different base values — see `DEFAULT_SCORING_WEIGHTS` in `constants.py`.
 
 **Key constants:**
 - `STANDARD_MATCH_DURATION = 70` - Match duration for score normalization

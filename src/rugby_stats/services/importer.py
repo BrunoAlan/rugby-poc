@@ -7,6 +7,7 @@ from uuid import uuid4
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from rugby_stats.constants import STAT_FIELDS
 from rugby_stats.models import Match, Player, PlayerMatchStats
 from rugby_stats.services.ai_analysis import AIAnalysisService
 
@@ -213,30 +214,20 @@ class ExcelImporter:
         self, player_id: int, match_id: int, row: pd.Series
     ) -> PlayerMatchStats:
         """Create player match statistics from Excel row."""
-        return PlayerMatchStats(
-            player_id=player_id,
-            match_id=match_id,
-            puesto=self._safe_int(row.get("puesto")),
-            tiempo_juego=float(row.get("tiempo_juego", 80.0))
-            if pd.notna(row.get("tiempo_juego"))
-            else 80.0,
-            tackles_positivos=self._safe_int(row.get("tackles_positivos")),
-            tackles=self._safe_int(row.get("tackles")),
-            tackles_errados=self._safe_int(row.get("tackles_errados")),
-            portador=self._safe_int(row.get("portador")),
-            ruck_ofensivos=self._safe_int(row.get("ruck_ofensivos")),
-            pases=self._safe_int(row.get("pases")),
-            pases_malos=self._safe_int(row.get("pases_malos")),
-            perdidas=self._safe_int(row.get("perdidas")),
-            recuperaciones=self._safe_int(row.get("recuperaciones")),
-            gana_contacto=self._safe_int(row.get("gana_contacto")),
-            quiebres=self._safe_int(row.get("quiebres")),
-            penales=self._safe_int(row.get("penales")),
-            juego_pie=self._safe_int(row.get("juego_pie")),
-            recepcion_aire_buena=self._safe_int(row.get("recepcion_aire_buena")),
-            recepcion_aire_mala=self._safe_int(row.get("recepcion_aire_mala")),
-            try_=self._safe_int(row.get("try_")),
-        )
+        stats_data = {
+            "player_id": player_id,
+            "match_id": match_id,
+            "puesto": self._safe_int(row.get("puesto")),
+            "tiempo_juego": self._extract_tiempo_juego(row),
+        }
+        for field in STAT_FIELDS:
+            stats_data[field] = self._safe_int(row.get(field))
+        return PlayerMatchStats(**stats_data)
+
+    def _extract_tiempo_juego(self, row: pd.Series) -> float:
+        """Extract tiempo_juego with default handling."""
+        tiempo = row.get("tiempo_juego")
+        return float(tiempo) if pd.notna(tiempo) else 80.0
 
     @staticmethod
     def _safe_int(value) -> int:
@@ -251,32 +242,24 @@ class ExcelImporter:
     def _extract_match_metadata(self, df: pd.DataFrame) -> dict:
         """Extract match metadata from special rows where puesto contains labels."""
         metadata: dict = {}
+        text_fields = {"cancha": "location", "resultado": "result", "equipo": "team"}
 
         for _, row in df.iterrows():
             puesto_val = row.get("puesto")
-            jugador_val = row.get("jugador")
-
             if not isinstance(puesto_val, str):
                 continue
 
-            puesto_lower = puesto_val.strip().lower()
+            jugador_val = row.get("jugador")
+            key = puesto_val.strip().lower()
 
-            if puesto_lower == "fecha":
+            if key == "fecha":
                 metadata["match_date"] = self._parse_date(jugador_val)
-            elif puesto_lower == "cancha":
-                metadata["location"] = (
-                    str(jugador_val).strip() if pd.notna(jugador_val) else None
-                )
-            elif puesto_lower == "resultado":
-                metadata["result"] = (
-                    str(jugador_val).strip() if pd.notna(jugador_val) else None
-                )
-            elif puesto_lower == "tanteador":
+            elif key == "tanteador":
                 our_score, opponent_score = self._parse_score(jugador_val)
                 metadata["our_score"] = our_score
                 metadata["opponent_score"] = opponent_score
-            elif puesto_lower == "equipo":
-                metadata["team"] = (
+            elif key in text_fields:
+                metadata[text_fields[key]] = (
                     str(jugador_val).strip() if pd.notna(jugador_val) else None
                 )
 

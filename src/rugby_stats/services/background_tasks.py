@@ -4,9 +4,9 @@ import logging
 from collections import Counter
 from datetime import datetime
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
-from rugby_stats.constants import get_group_for_position
+from rugby_stats.constants import STAT_FIELDS, get_group_for_position
 from rugby_stats.database import SessionLocal
 from rugby_stats.models import Match, Player, PlayerMatchStats
 from rugby_stats.services.ai_analysis import AIAnalysisService
@@ -39,14 +39,11 @@ def generate_ai_analysis_background(match_ids: list[int]) -> None:
                     logger.warning(f"Match {match_id} not found, skipping")
                     continue
 
-                # Update status to processing
                 match.ai_analysis_status = "processing"
                 db.commit()
 
-                # Generate AI analysis
                 ai_service.analyze_and_save(match)
 
-                # Update status based on result
                 if match.ai_analysis:
                     match.ai_analysis_status = "completed"
                 elif match.ai_analysis_error:
@@ -90,79 +87,99 @@ def generate_player_evolution_background(player_id: int) -> None:
         db.commit()
 
         try:
-            anomaly_service = AnomalyDetectionService(db)
-            anomalies = anomaly_service.detect_anomalies(player_id)
-
-            from rugby_stats.services.scoring import ScoringService
-            scoring_service = ScoringService(db)
-            summary = scoring_service.get_player_summary(player.name)
-
-            if not summary or not summary.get("matches"):
-                player.ai_evolution_analysis_error = "No match data available"
-                player.ai_evolution_analysis_status = "error"
-                db.commit()
-                return
-
-            positions = [s.puesto for s in player.match_stats if s.puesto]
-            most_common_pos = Counter(positions).most_common(1)[0][0]
-
-            group = get_group_for_position(most_common_pos)
-            group_positions = group["positions"] if group else [most_common_pos]
-
-            group_stats = db.query(PlayerMatchStats).filter(
-                PlayerMatchStats.puesto.in_(group_positions)
-            ).all()
-
-            stat_fields = [
-                "tackles_positivos", "tackles", "tackles_errados", "portador",
-                "ruck_ofensivos", "pases", "pases_malos", "perdidas",
-                "recuperaciones", "gana_contacto", "quiebres", "penales",
-                "juego_pie", "recepcion_aire_buena", "recepcion_aire_mala", "try_",
-            ]
-            position_comparison = {}
-            for field in stat_fields:
-                player_values = [getattr(s, field, 0) or 0 for s in player.match_stats]
-                group_values = [getattr(s, field, 0) or 0 for s in group_stats]
-                player_avg = sum(player_values) / len(player_values) if player_values else 0
-                group_avg = sum(group_values) / len(group_values) if group_values else 0
-                diff_pct = round(((player_avg - group_avg) / group_avg) * 100, 1) if group_avg > 0 else 0.0
-                position_comparison[field] = {
-                    "player_avg": round(player_avg, 1),
-                    "group_avg": round(group_avg, 1),
-                    "difference_pct": diff_pct,
-                }
-
-            # Get active scoring config for weight-based stat prioritization
-            from rugby_stats.models import ScoringConfiguration as ScoringConfigModel
-            active_config = db.query(ScoringConfigModel).filter(
-                ScoringConfigModel.is_active.is_(True)
-            ).options(joinedload(ScoringConfigModel.weights)).first()
-
-            ai_service = AIAnalysisService(db)
-            analysis = ai_service.generate_player_evolution(
-                player_name=player.name,
-                matches_data=summary["matches"],
-                anomalies=anomalies,
-                position_comparison=position_comparison,
-                position_number=most_common_pos,
-                config=active_config,
-            )
-
-            player.ai_evolution_analysis = analysis
-            player.ai_evolution_analysis_status = "completed"
-            player.ai_evolution_analysis_error = None
-            player.ai_evolution_generated_at = datetime.utcnow()
-            player.ai_evolution_match_count = len(player.match_stats)
-            db.commit()
-
+            data = _prepare_evolution_data(db, player)
+            analysis = _generate_analysis(db, player, data)
+            _save_evolution_result(db, player, analysis)
         except Exception as e:
-            logger.error(f"Error generating evolution analysis for player {player_id}: {e}")
-            db.rollback()
-            player = db.query(Player).filter(Player.id == player_id).first()
-            if player:
-                player.ai_evolution_analysis_status = "error"
-                player.ai_evolution_analysis_error = str(e)[:500]
-                db.commit()
-
+            _handle_evolution_error(db, player_id, e)
     finally:
         db.close()
+
+
+def _prepare_evolution_data(db: Session, player: Player) -> dict:
+    """Gather anomalies, summary, position comparison, and scoring config for evolution analysis.
+
+    Returns a dict with keys: summary, anomalies, position_comparison,
+    most_common_pos, and active_config.
+
+    Raises ValueError if no match data is available.
+    """
+    anomaly_service = AnomalyDetectionService(db)
+    anomalies = anomaly_service.detect_anomalies(player.id)
+
+    from rugby_stats.services.scoring import ScoringService
+
+    scoring_service = ScoringService(db)
+    summary = scoring_service.get_player_summary(player.name)
+
+    if not summary or not summary.get("matches"):
+        raise ValueError("No match data available")
+
+    positions = [s.puesto for s in player.match_stats if s.puesto]
+    most_common_pos = Counter(positions).most_common(1)[0][0]
+
+    position_comparison = _calculate_position_comparison(db, player, most_common_pos)
+
+    from rugby_stats.models import ScoringConfiguration as ScoringConfigModel
+
+    active_config = db.query(ScoringConfigModel).filter(
+        ScoringConfigModel.is_active.is_(True)
+    ).options(joinedload(ScoringConfigModel.weights)).first()
+
+    return {
+        "summary": summary,
+        "anomalies": anomalies,
+        "position_comparison": position_comparison,
+        "most_common_pos": most_common_pos,
+        "active_config": active_config,
+    }
+
+
+def _calculate_position_comparison(
+    db: Session, player: Player, most_common_pos: int
+) -> dict[str, dict]:
+    """Calculate position comparison for evolution analysis."""
+    group = get_group_for_position(most_common_pos)
+    group_positions = group["positions"] if group else [most_common_pos]
+
+    group_stats = db.query(PlayerMatchStats).filter(
+        PlayerMatchStats.puesto.in_(group_positions)
+    ).all()
+
+    from rugby_stats.services.scoring import ScoringService
+
+    return ScoringService._calculate_stats_comparison(player.match_stats, group_stats)
+
+
+def _generate_analysis(db: Session, player: Player, data: dict) -> str:
+    """Call the AI service to generate the evolution analysis text."""
+    ai_service = AIAnalysisService(db)
+    return ai_service.generate_player_evolution(
+        player_name=player.name,
+        matches_data=data["summary"]["matches"],
+        anomalies=data["anomalies"],
+        position_comparison=data["position_comparison"],
+        position_number=data["most_common_pos"],
+        config=data["active_config"],
+    )
+
+
+def _save_evolution_result(db: Session, player: Player, analysis: str) -> None:
+    """Persist successful evolution analysis on the player record."""
+    player.ai_evolution_analysis = analysis
+    player.ai_evolution_analysis_status = "completed"
+    player.ai_evolution_analysis_error = None
+    player.ai_evolution_generated_at = datetime.utcnow()
+    player.ai_evolution_match_count = len(player.match_stats)
+    db.commit()
+
+
+def _handle_evolution_error(db: Session, player_id: int, error: Exception) -> None:
+    """Log and persist an error that occurred during evolution analysis."""
+    logger.error(f"Error generating evolution analysis for player {player_id}: {error}")
+    db.rollback()
+    player = db.query(Player).filter(Player.id == player_id).first()
+    if player:
+        player.ai_evolution_analysis_status = "error"
+        player.ai_evolution_analysis_error = str(error)[:500]
+        db.commit()

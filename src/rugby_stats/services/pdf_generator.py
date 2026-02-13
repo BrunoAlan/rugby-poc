@@ -16,11 +16,17 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from rugby_stats.constants import STAT_LABELS
 from rugby_stats.models import Match
 
 
 class PDFGeneratorService:
     """Service for generating PDF match reports."""
+
+    RANKINGS_COL_WIDTHS = [1.2, 6, 2, 2.5, 2]  # in cm
+    SCORE_EVOLUTION_COL_WIDTHS = [4.5, 2.5, 1.5, 1.5, 2.5]
+    TRENDS_COL_WIDTHS = [3.5, 2, 2, 1.5, 1.8, 2]
+    COMPARISON_COL_WIDTHS = [4, 2.5, 2.5, 2.5]
 
     def __init__(self):
         self.styles = getSampleStyleSheet()
@@ -165,52 +171,28 @@ class PDFGeneratorService:
 
         return elements
 
-    def _create_rankings_table(self, rankings: list[dict]) -> Table:
-        """Create rankings table for the PDF."""
-        # Table headers
-        headers = ["#", "Jugador", "Puesto", "Puntuación", "Minutos"]
-
-        # Build data rows
-        data = [headers]
-        for ranking in rankings:
-            row = [
-                str(ranking["rank"]),
-                ranking["player_name"],
-                f"#{ranking['puesto']}" if ranking.get("puesto") else "-",
-                f"{ranking['puntuacion_final']:.1f}",
-                f"{ranking['tiempo_juego']:.0f}'" if ranking.get("tiempo_juego") else "-",
-            ]
-            data.append(row)
-
-        # Create table with column widths
-        col_widths = [1.2 * cm, 6 * cm, 2 * cm, 2.5 * cm, 2 * cm]
+    def _create_styled_table(
+        self, data: list[list], col_widths_cm: list[float], font_size: int = 9
+    ) -> Table:
+        """Create a table with standard header styling and alternating row colors."""
+        col_widths = [w * cm for w in col_widths_cm]
         table = Table(data, colWidths=col_widths)
 
-        # Apply table styles
         style = TableStyle(
             [
-                # Header styling
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("FONTSIZE", (0, 0), (-1, 0), font_size),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
-                ("TOPPADDING", (0, 0), (-1, 0), 10),
-                # Body styling
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 9),
-                ("ALIGN", (0, 1), (0, -1), "CENTER"),  # Rank column
-                ("ALIGN", (2, 1), (-1, -1), "CENTER"),  # Puesto, score, minutes
-                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-                ("TOPPADDING", (0, 1), (-1, -1), 6),
-                # Grid
+                ("FONTSIZE", (0, 1), (-1, -1), max(font_size - 1, 7)),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-                # Alternating row colors
             ]
         )
 
-        # Add alternating row colors
         for i in range(1, len(data)):
             if i % 2 == 0:
                 style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
@@ -218,22 +200,9 @@ class PDFGeneratorService:
         table.setStyle(style)
         return table
 
-    def generate_match_report(
-        self, match: Match, rankings: list[dict]
-    ) -> bytes:
-        """
-        Generate a PDF report for a match.
-
-        Args:
-            match: The match to generate a report for
-            rankings: List of player rankings for the match
-
-        Returns:
-            PDF file as bytes
-        """
-        buffer = io.BytesIO()
-
-        doc = SimpleDocTemplate(
+    def _create_pdf_document(self, buffer: io.BytesIO) -> SimpleDocTemplate:
+        """Create a SimpleDocTemplate with standard margins."""
+        return SimpleDocTemplate(
             buffer,
             pagesize=A4,
             rightMargin=2 * cm,
@@ -242,21 +211,31 @@ class PDFGeneratorService:
             bottomMargin=2 * cm,
         )
 
+    def _finalize_pdf(
+        self, doc: SimpleDocTemplate, elements: list, buffer: io.BytesIO
+    ) -> bytes:
+        """Build the PDF document and return the resulting bytes."""
+        doc.build(elements)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        return pdf_bytes
+
+    # -- Match report element builders --
+
+    def _build_match_header_elements(self, match: Match) -> list:
+        """Return elements for the match report title, info, and score."""
         elements = []
 
-        # Title
         elements.append(
             Paragraph("INFORME DEL PARTIDO", self.styles["ReportTitle"])
         )
 
-        # Match header
         match_title = f"{match.team} vs {match.opponent_name}"
         elements.append(
             Paragraph(match_title, self.styles["Heading2"])
         )
         elements.append(Spacer(1, 0.5 * cm))
 
-        # Match info section
         elements.append(
             Paragraph(
                 f"<b>Fecha:</b> {self._format_date(match.match_date)}",
@@ -285,18 +264,26 @@ class PDFGeneratorService:
             )
 
         elements.append(Spacer(1, 0.8 * cm))
+        return elements
 
-        # AI Analysis section
+    def _build_analysis_elements(self, analysis: str | None) -> list:
+        """Return the analysis section elements (heading + parsed markdown)."""
+        elements = []
+
         elements.append(
             Paragraph("ANÁLISIS DEL PARTIDO", self.styles["SectionTitle"])
         )
 
-        analysis_elements = self._parse_markdown_analysis(match.ai_analysis)
+        analysis_elements = self._parse_markdown_analysis(analysis)
         elements.extend(analysis_elements)
 
         elements.append(Spacer(1, 0.8 * cm))
+        return elements
 
-        # Rankings section
+    def _build_rankings_elements(self, rankings: list[dict]) -> list:
+        """Return the rankings section elements (heading + table)."""
+        elements = []
+
         elements.append(
             Paragraph("RANKINGS DEL PARTIDO", self.styles["SectionTitle"])
         )
@@ -313,38 +300,63 @@ class PDFGeneratorService:
                 )
             )
 
-        # Build PDF
-        doc.build(elements)
+        return elements
 
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+    def _create_rankings_table(self, rankings: list[dict]) -> Table:
+        """Create rankings table for the PDF."""
+        headers = ["#", "Jugador", "Puesto", "Puntuación", "Minutos"]
 
-        return pdf_bytes
+        data = [headers]
+        for ranking in rankings:
+            row = [
+                str(ranking["rank"]),
+                ranking["player_name"],
+                f"#{ranking['puesto']}" if ranking.get("puesto") else "-",
+                f"{ranking['puntuacion_final']:.1f}",
+                f"{ranking['tiempo_juego']:.0f}'" if ranking.get("tiempo_juego") else "-",
+            ]
+            data.append(row)
 
-    def generate_player_report(
-        self,
-        player_name: str,
-        position_group: str,
-        matches_data: list[dict],
-        anomalies: dict[str, dict],
-        position_comparison: dict[str, dict],
-        ai_analysis: str | None = None,
-    ) -> bytes:
-        """Generate a PDF evolution report for a player."""
-        buffer = io.BytesIO()
+        col_widths = [w * cm for w in self.RANKINGS_COL_WIDTHS]
+        table = Table(data, colWidths=col_widths)
 
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
+        style = TableStyle(
+            [
+                # Header styling
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+                ("TOPPADDING", (0, 0), (-1, 0), 10),
+                # Body styling
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("ALIGN", (0, 1), (0, -1), "CENTER"),  # Rank column
+                ("ALIGN", (2, 1), (-1, -1), "CENTER"),  # Puesto, score, minutes
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+                ("TOPPADDING", (0, 1), (-1, -1), 6),
+                # Grid
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            ]
         )
 
+        for i in range(1, len(data)):
+            if i % 2 == 0:
+                style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+
+        table.setStyle(style)
+        return table
+
+    # -- Player report element builders --
+
+    def _build_player_header_elements(
+        self, player_name: str, position_group: str, match_count: int
+    ) -> list:
+        """Return elements for the player report title, info, and date."""
         elements = []
 
-        # Title
         elements.append(
             Paragraph("INFORME DE EVOLUCIÓN", self.styles["ReportTitle"])
         )
@@ -353,11 +365,10 @@ class PDFGeneratorService:
         )
         elements.append(Spacer(1, 0.3 * cm))
 
-        # Player info
         pos_label = "Forward" if position_group == "forwards" else "Back"
         elements.append(
             Paragraph(
-                f"<b>Posición:</b> {pos_label} | <b>Partidos jugados:</b> {len(matches_data)}",
+                f"<b>Posición:</b> {pos_label} | <b>Partidos jugados:</b> {match_count}",
                 self.styles["MatchInfo"],
             )
         )
@@ -368,8 +379,12 @@ class PDFGeneratorService:
             )
         )
         elements.append(Spacer(1, 0.8 * cm))
+        return elements
 
-        # Score evolution table
+    def _build_score_evolution_elements(self, matches_data: list[dict]) -> list:
+        """Return elements for the score evolution section (heading + table)."""
+        elements = []
+
         elements.append(
             Paragraph("EVOLUCIÓN DE PUNTUACIÓN", self.styles["SectionTitle"])
         )
@@ -387,157 +402,187 @@ class PDFGeneratorService:
                     f"{m.get('score', 0):.1f}",
                 ])
 
-            score_col_widths = [4.5 * cm, 2.5 * cm, 1.5 * cm, 1.5 * cm, 2.5 * cm]
-            score_table = Table(score_data, colWidths=score_col_widths)
-            score_style = TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
+            score_table = self._create_styled_table(
+                score_data, self.SCORE_EVOLUTION_COL_WIDTHS, font_size=9
+            )
+            # Override alignment for numeric columns (puesto, min, score)
+            style = TableStyle([
                 ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
             ])
-            for i in range(1, len(score_data)):
-                if i % 2 == 0:
-                    score_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
-            score_table.setStyle(score_style)
+            score_table.setStyle(style)
             elements.append(score_table)
 
         elements.append(Spacer(1, 0.8 * cm))
+        return elements
 
-        # Stats trends table
-        if anomalies:
-            elements.append(
-                Paragraph("TENDENCIAS POR ESTADÍSTICA", self.styles["SectionTitle"])
-            )
-            elements.append(Spacer(1, 0.3 * cm))
+    def _build_stats_trends_elements(self, anomalies: dict[str, dict]) -> list:
+        """Return elements for the stats trends section (heading + table with alert coloring)."""
+        elements = []
 
-            stat_labels = {
-                "tackles_positivos": "Tackles Positivos",
-                "tackles": "Tackles Totales",
-                "tackles_errados": "Tackles Errados",
-                "portador": "Portador",
-                "ruck_ofensivos": "Ruck Ofensivos",
-                "pases": "Pases",
-                "pases_malos": "Pases Malos",
-                "perdidas": "Pérdidas",
-                "recuperaciones": "Recuperaciones",
-                "gana_contacto": "Gana Contacto",
-                "quiebres": "Quiebres",
-                "penales": "Penales",
-                "juego_pie": "Juego Pie",
-                "recepcion_aire_buena": "Recep. Aire (B)",
-                "recepcion_aire_mala": "Recep. Aire (M)",
-                "try_": "Tries",
-            }
+        if not anomalies:
+            return elements
 
-            trend_headers = ["Estadística", "Med. Hist.", "Med. Rec.", "Último", "Desv. %", "Alerta"]
-            trend_data = [trend_headers]
+        elements.append(
+            Paragraph("TENDENCIAS POR ESTADÍSTICA", self.styles["SectionTitle"])
+        )
+        elements.append(Spacer(1, 0.3 * cm))
 
-            for stat_name, label in stat_labels.items():
-                if stat_name not in anomalies:
-                    continue
-                a = anomalies[stat_name]
-                alert_text = ""
-                if a.get("alert") == "positive":
-                    alert_text = "↑ Mejora"
-                elif a.get("alert") == "negative":
-                    alert_text = "↓ Baja"
+        trend_headers = ["Estadística", "Med. Hist.", "Med. Rec.", "Último", "Desv. %", "Alerta"]
+        trend_data = [trend_headers]
 
-                trend_data.append([
-                    label,
-                    f"{a.get('median_all', 0):.1f}",
-                    f"{a.get('median_recent', 0):.1f}",
-                    str(a.get("last_value", 0)),
-                    f"{a.get('deviation_pct', 0):+.1f}%",
-                    alert_text,
-                ])
+        for stat_name, label in STAT_LABELS.items():
+            if stat_name not in anomalies:
+                continue
+            anomaly_data = anomalies[stat_name]
+            alert_text = ""
+            if anomaly_data.get("alert") == "positive":
+                alert_text = "↑ Mejora"
+            elif anomaly_data.get("alert") == "negative":
+                alert_text = "↓ Baja"
 
-            trend_col_widths = [3.5 * cm, 2 * cm, 2 * cm, 1.5 * cm, 1.8 * cm, 2 * cm]
-            trend_table = Table(trend_data, colWidths=trend_col_widths)
-            trend_style = TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 8),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            trend_data.append([
+                label,
+                f"{anomaly_data.get('median_all', 0):.1f}",
+                f"{anomaly_data.get('median_recent', 0):.1f}",
+                str(anomaly_data.get("last_value", 0)),
+                f"{anomaly_data.get('deviation_pct', 0):+.1f}%",
+                alert_text,
             ])
 
-            # Color alert rows
-            for i in range(1, len(trend_data)):
-                alert_val = trend_data[i][5]
-                if "Mejora" in alert_val:
-                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f0fff4"))
-                    trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#276749"))
-                elif "Baja" in alert_val:
-                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#fff5f5"))
-                    trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#c53030"))
-                elif i % 2 == 0:
-                    trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+        col_widths = [w * cm for w in self.TRENDS_COL_WIDTHS]
+        trend_table = Table(trend_data, colWidths=col_widths)
+        trend_style = TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 1), (-1, -1), 8),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+        ])
 
-            trend_table.setStyle(trend_style)
-            elements.append(trend_table)
+        # Color alert rows
+        for i in range(1, len(trend_data)):
+            alert_val = trend_data[i][5]
+            if "Mejora" in alert_val:
+                trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f0fff4"))
+                trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#276749"))
+            elif "Baja" in alert_val:
+                trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#fff5f5"))
+                trend_style.add("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#c53030"))
+            elif i % 2 == 0:
+                trend_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
+
+        trend_table.setStyle(trend_style)
+        elements.append(trend_table)
+
+        return elements
+
+    def _build_position_comparison_elements(
+        self,
+        position_comparison: dict[str, dict],
+        position_group: str,
+    ) -> list:
+        """Return elements for the position comparison section (heading + table)."""
+        elements = []
+
+        if not position_comparison:
+            return elements
+
+        significant = {
+            k: v
+            for k, v in position_comparison.items()
+            if abs(v.get("difference_pct", 0)) >= 15
+        }
+        if not significant:
+            return elements
+
+        elements.append(
+            Paragraph(
+                f"COMPARATIVA CON {position_group.upper()}",
+                self.styles["SectionTitle"],
+            )
+        )
+        elements.append(Spacer(1, 0.3 * cm))
+
+        comp_headers = ["Estadística", "Jugador", "Grupo", "Diferencia"]
+        comp_data = [comp_headers]
+        for stat_name, comp in significant.items():
+            label = STAT_LABELS.get(stat_name, stat_name)
+            diff = comp["difference_pct"]
+            diff_text = f"{diff:+.1f}%"
+            comp_data.append([
+                label,
+                f"{comp['player_avg']:.1f}",
+                f"{comp['group_avg']:.1f}",
+                diff_text,
+            ])
+
+        comp_table = self._create_styled_table(
+            comp_data, self.COMPARISON_COL_WIDTHS, font_size=9
+        )
+        # Override alignment for numeric columns
+        style = TableStyle([
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ])
+        comp_table.setStyle(style)
+        elements.append(comp_table)
 
         elements.append(Spacer(1, 0.8 * cm))
+        return elements
 
-        # Position comparison table
-        if position_comparison:
-            significant = {k: v for k, v in position_comparison.items() if abs(v.get("difference_pct", 0)) >= 15}
-            if significant:
-                elements.append(
-                    Paragraph(
-                        f"COMPARATIVA CON {position_group.upper()}",
-                        self.styles["SectionTitle"],
-                    )
-                )
-                elements.append(Spacer(1, 0.3 * cm))
+    # -- Public report generators --
 
-                comp_headers = ["Estadística", "Jugador", "Grupo", "Diferencia"]
-                comp_data = [comp_headers]
-                for stat_name, comp in significant.items():
-                    label = stat_labels.get(stat_name, stat_name) if anomalies else stat_name
-                    diff = comp["difference_pct"]
-                    diff_text = f"{diff:+.1f}%"
-                    comp_data.append([
-                        label,
-                        f"{comp['player_avg']:.1f}",
-                        f"{comp['group_avg']:.1f}",
-                        diff_text,
-                    ])
+    def generate_match_report(
+        self, match: Match, rankings: list[dict]
+    ) -> bytes:
+        """
+        Generate a PDF report for a match.
 
-                comp_col_widths = [4 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm]
-                comp_table = Table(comp_data, colWidths=comp_col_widths)
-                comp_style = TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a365d")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 9),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 8),
-                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-                ])
-                for i in range(1, len(comp_data)):
-                    if i % 2 == 0:
-                        comp_style.add("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f7fafc"))
-                comp_table.setStyle(comp_style)
-                elements.append(comp_table)
+        Args:
+            match: The match to generate a report for
+            rankings: List of player rankings for the match
 
-                elements.append(Spacer(1, 0.8 * cm))
+        Returns:
+            PDF file as bytes
+        """
+        buffer = io.BytesIO()
+        doc = self._create_pdf_document(buffer)
+
+        elements = []
+        elements.extend(self._build_match_header_elements(match))
+        elements.extend(self._build_analysis_elements(match.ai_analysis))
+        elements.extend(self._build_rankings_elements(rankings))
+
+        return self._finalize_pdf(doc, elements, buffer)
+
+    def generate_player_report(
+        self,
+        player_name: str,
+        position_group: str,
+        matches_data: list[dict],
+        anomalies: dict[str, dict],
+        position_comparison: dict[str, dict],
+        ai_analysis: str | None = None,
+    ) -> bytes:
+        """Generate a PDF evolution report for a player."""
+        buffer = io.BytesIO()
+        doc = self._create_pdf_document(buffer)
+
+        elements = []
+        elements.extend(
+            self._build_player_header_elements(player_name, position_group, len(matches_data))
+        )
+        elements.extend(self._build_score_evolution_elements(matches_data))
+        elements.extend(self._build_stats_trends_elements(anomalies))
+        elements.append(Spacer(1, 0.8 * cm))
+        elements.extend(
+            self._build_position_comparison_elements(position_comparison, position_group)
+        )
 
         # AI Analysis section
         elements.append(
@@ -546,8 +591,4 @@ class PDFGeneratorService:
         analysis_elements = self._parse_markdown_analysis(ai_analysis)
         elements.extend(analysis_elements)
 
-        # Build PDF
-        doc.build(elements)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-        return pdf_bytes
+        return self._finalize_pdf(doc, elements, buffer)

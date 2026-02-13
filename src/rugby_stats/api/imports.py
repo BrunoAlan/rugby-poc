@@ -19,6 +19,23 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 settings = get_settings()
 
 
+def _validate_excel_file(file: UploadFile) -> None:
+    """Validate uploaded file is an Excel file."""
+    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only Excel files (.xlsx, .xls) are accepted.",
+        )
+
+
+async def _save_to_temp_file(file: UploadFile) -> Path:
+    """Save uploaded file to a temporary location."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        content = await file.read()
+        tmp.write(content)
+        return Path(tmp.name)
+
+
 @router.post("/upload", response_model=UploadResult)
 async def upload_excel(
     background_tasks: BackgroundTasks,
@@ -37,25 +54,13 @@ async def upload_excel(
     Returns:
         Import statistics including players, matches, and stats created
     """
-    # Validate file type
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type. Only Excel files (.xlsx, .xls) are accepted.",
-        )
+    _validate_excel_file(file)
 
-    # Save file temporarily
+    tmp_path = await _save_to_temp_file(file)
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-            content = await file.read()
-            tmp.write(content)
-            tmp_path = Path(tmp.name)
-
-        # Seed default weights if not present
         scoring_service = ScoringService(db)
         scoring_service.seed_default_weights()
 
-        # Import data with AI analysis queued for background processing
         importer = ExcelImporter(db)
         should_generate_ai = generate_ai and settings.can_generate_ai_analysis
         stats = importer.import_file(
@@ -63,10 +68,8 @@ async def upload_excel(
             queue_ai_analysis=should_generate_ai,
         )
 
-        # Recalculate scores
         scoring_service.recalculate_all_scores()
 
-        # Queue background AI analysis if enabled
         if should_generate_ai and stats.get("ai_analysis_queued", 0) > 0:
             match_ids = importer.get_created_match_ids()
             background_tasks.add_task(generate_ai_analysis_background, match_ids)
@@ -86,7 +89,6 @@ async def upload_excel(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
     finally:
-        # Clean up temp file
         if tmp_path.exists():
             tmp_path.unlink()
 

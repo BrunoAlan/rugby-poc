@@ -22,6 +22,183 @@ app = typer.Typer(
 
 console = Console()
 
+ANALYSIS_PREVIEW_LENGTH = 500
+
+
+# ---------------------------------------------------------------------------
+# Helpers for import_excel
+# ---------------------------------------------------------------------------
+
+
+def _validate_file_exists(file_path: Path) -> None:
+    if not file_path.exists():
+        console.print(f"[red]Error: File not found: {file_path}[/red]")
+        raise typer.Exit(1)
+
+
+def _print_import_stats(stats: dict, ai: bool) -> None:
+    console.print("[green]Import completed successfully![/green]")
+    console.print(f"  Players created: {stats['players_created']}")
+    console.print(f"  Matches created: {stats['matches_created']}")
+    console.print(f"  Stats records created: {stats['stats_created']}")
+    console.print(f"  Opponents: {', '.join(stats['sheets_processed'])}")
+    if ai:
+        console.print(f"  AI analysis generated: {stats.get('ai_analysis_generated', 0)}")
+        if stats.get('ai_analysis_errors', 0) > 0:
+            console.print(f"  [yellow]AI analysis errors: {stats['ai_analysis_errors']}[/yellow]")
+
+
+# ---------------------------------------------------------------------------
+# Helpers for show_rankings
+# ---------------------------------------------------------------------------
+
+
+def _create_aggregated_table(rankings: list[dict]) -> Table:
+    table = Table(title="Player Rankings (Promedio - min 20 min/partido)")
+    table.add_column("Rank", justify="right", style="cyan")
+    table.add_column("Player", style="white")
+    table.add_column("Matches", justify="right", style="blue")
+    table.add_column("Avg Score", justify="right", style="green")
+
+    for r in rankings:
+        table.add_row(
+            str(r["rank"]),
+            r["player_name"],
+            str(r["matches_played"]),
+            f"{r['puntuacion_final']:.2f}",
+        )
+
+    return table
+
+
+def _create_match_table(rankings: list[dict]) -> Table:
+    table = Table(title="Player Rankings (Por Partido)")
+    table.add_column("Rank", justify="right", style="cyan")
+    table.add_column("Player", style="white")
+    table.add_column("Opponent", style="blue")
+    table.add_column("Position", justify="right")
+    table.add_column("Minutes", justify="right")
+    table.add_column("Score Abs", justify="right")
+    table.add_column("Score Final", justify="right", style="green")
+
+    for r in rankings:
+        table.add_row(
+            str(r["rank"]),
+            r["player_name"],
+            r["opponent"] or "-",
+            str(r["puesto"]) if r["puesto"] else "-",
+            f"{r['tiempo_juego']:.0f}" if r["tiempo_juego"] else "-",
+            f"{r['score_absoluto']:.2f}" if r["score_absoluto"] else "-",
+            f"{r['puntuacion_final']:.2f}",
+        )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Helpers for reset_db
+# ---------------------------------------------------------------------------
+
+
+def _confirm_reset(force: bool) -> None:
+    if force:
+        return
+    confirm = typer.confirm(
+        "[yellow]¿Estás seguro? Esto eliminará TODOS los datos de la base de datos.[/yellow]",
+        default=False,
+    )
+    if not confirm:
+        console.print("[blue]Operación cancelada.[/blue]")
+        raise typer.Exit(0)
+
+
+def _drop_all_tables() -> None:
+    console.print("[blue]Eliminando todas las tablas...[/blue]")
+    Base.metadata.drop_all(bind=engine)
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        conn.commit()
+    console.print("[green]Tablas eliminadas correctamente.[/green]")
+
+
+def _run_migrations() -> None:
+    console.print("[blue]Ejecutando migraciones...[/blue]")
+    alembic_ini = Path(__file__).parent.parent.parent.parent / "alembic.ini"
+    if not alembic_ini.exists():
+        console.print(f"[red]Error: No se encontró alembic.ini en {alembic_ini}[/red]")
+        raise typer.Exit(1)
+    alembic_cfg = Config(str(alembic_ini))
+    command.upgrade(alembic_cfg, "head")
+    console.print("[green]Migraciones aplicadas correctamente.[/green]")
+
+
+def _seed_default_weights() -> None:
+    console.print("[blue]Seeding pesos por defecto...[/blue]")
+    with SessionLocal() as db:
+        scoring_service = ScoringService(db)
+        config = scoring_service.seed_default_weights()
+        console.print(f"[green]Configuración de scoring creada: {config.name}[/green]")
+
+
+# ---------------------------------------------------------------------------
+# Helpers for list_matches
+# ---------------------------------------------------------------------------
+
+
+def _create_matches_table(matches: list) -> Table:
+    table = Table(title="Matches")
+    table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Opponent", style="white")
+    table.add_column("Date", style="blue")
+    table.add_column("Location", style="magenta")
+    table.add_column("Result", style="yellow")
+    table.add_column("Score", justify="center")
+    table.add_column("Players", justify="right")
+
+    for match in matches:
+        date_str = str(match.match_date) if match.match_date else "-"
+        location_str = match.location if match.location else "-"
+        result_str = match.result if match.result else "-"
+        if match.our_score is not None and match.opponent_score is not None:
+            score_str = f"{match.our_score} - {match.opponent_score}"
+        else:
+            score_str = "-"
+        table.add_row(
+            str(match.id),
+            match.opponent_name,
+            date_str,
+            location_str,
+            result_str,
+            score_str,
+            str(len(match.player_stats)),
+        )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Helpers for regenerate_analysis
+# ---------------------------------------------------------------------------
+
+
+def _print_analysis_result(match) -> None:
+    if match.ai_analysis:
+        console.print("[green]AI analysis generated successfully![/green]")
+        console.print("\n[bold]Analysis Preview:[/bold]")
+        preview = match.ai_analysis[:ANALYSIS_PREVIEW_LENGTH]
+        if len(match.ai_analysis) > ANALYSIS_PREVIEW_LENGTH:
+            preview += "..."
+        console.print(preview)
+    elif match.ai_analysis_error:
+        console.print(f"[red]Error generating analysis: {match.ai_analysis_error}[/red]")
+    else:
+        console.print("[yellow]No analysis generated (AI may not be configured)[/yellow]")
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
 
 @app.command()
 def import_excel(
@@ -34,16 +211,12 @@ def import_excel(
     ),
 ):
     """Import rugby data from an Excel file."""
-    if not file_path.exists():
-        console.print(f"[red]Error: File not found: {file_path}[/red]")
-        raise typer.Exit(1)
+    _validate_file_exists(file_path)
 
     with SessionLocal() as db:
-        # Seed default weights if not present
         scoring_service = ScoringService(db)
         scoring_service.seed_default_weights()
 
-        # Import data
         console.print(f"[blue]Importing data from {file_path}...[/blue]")
         importer = ExcelImporter(db)
         try:
@@ -52,19 +225,8 @@ def import_excel(
             console.print(f"[red]Error importing file: {e}[/red]")
             raise typer.Exit(1)
 
-        console.print("[green]Import completed successfully![/green]")
-        console.print(f"  Players created: {stats['players_created']}")
-        console.print(f"  Matches created: {stats['matches_created']}")
-        console.print(f"  Stats records created: {stats['stats_created']}")
-        console.print(f"  Opponents: {', '.join(stats['sheets_processed'])}")
+        _print_import_stats(stats, ai)
 
-        # Show AI analysis stats if requested
-        if ai:
-            console.print(f"  AI analysis generated: {stats.get('ai_analysis_generated', 0)}")
-            if stats.get('ai_analysis_errors', 0) > 0:
-                console.print(f"  [yellow]AI analysis errors: {stats['ai_analysis_errors']}[/yellow]")
-
-        # Recalculate scores
         if recalculate:
             console.print("\n[blue]Recalculating scores...[/blue]")
             try:
@@ -111,45 +273,11 @@ def show_rankings(
             console.print("[yellow]No rankings found. Have you imported data and calculated scores?[/yellow]")
             return
 
-        # Check if aggregated view (no match_id)
         is_aggregated = rankings[0].get("matches_played") is not None
-
         if is_aggregated:
-            # Aggregated view - average scores across matches
-            table = Table(title="Player Rankings (Promedio - min 20 min/partido)")
-            table.add_column("Rank", justify="right", style="cyan")
-            table.add_column("Player", style="white")
-            table.add_column("Matches", justify="right", style="blue")
-            table.add_column("Avg Score", justify="right", style="green")
-
-            for r in rankings:
-                table.add_row(
-                    str(r["rank"]),
-                    r["player_name"],
-                    str(r["matches_played"]),
-                    f"{r['puntuacion_final']:.2f}",
-                )
+            table = _create_aggregated_table(rankings)
         else:
-            # Per-match view
-            table = Table(title="Player Rankings (Por Partido)")
-            table.add_column("Rank", justify="right", style="cyan")
-            table.add_column("Player", style="white")
-            table.add_column("Opponent", style="blue")
-            table.add_column("Position", justify="right")
-            table.add_column("Minutes", justify="right")
-            table.add_column("Score Abs", justify="right")
-            table.add_column("Score Final", justify="right", style="green")
-
-            for r in rankings:
-                table.add_row(
-                    str(r["rank"]),
-                    r["player_name"],
-                    r["opponent"] or "-",
-                    str(r["puesto"]) if r["puesto"] else "-",
-                    f"{r['tiempo_juego']:.0f}" if r["tiempo_juego"] else "-",
-                    f"{r['score_absoluto']:.2f}" if r["score_absoluto"] else "-",
-                    f"{r['puntuacion_final']:.2f}",
-                )
+            table = _create_match_table(rankings)
 
         console.print(table)
 
@@ -213,48 +341,12 @@ def reset_db(
     seed: bool = typer.Option(True, "--seed-weights/--no-seed-weights", help="Seedear pesos por defecto"),
 ):
     """Resetear la base de datos eliminando todas las tablas y re-ejecutando migraciones."""
-    if not force:
-        confirm = typer.confirm(
-            "[yellow]¿Estás seguro? Esto eliminará TODOS los datos de la base de datos.[/yellow]",
-            default=False,
-        )
-        if not confirm:
-            console.print("[blue]Operación cancelada.[/blue]")
-            raise typer.Exit(0)
+    _confirm_reset(force)
+    _drop_all_tables()
+    _run_migrations()
 
-    console.print("[blue]Eliminando todas las tablas...[/blue]")
-
-    # Drop all tables
-    Base.metadata.drop_all(bind=engine)
-
-    # Drop alembic_version table to reset migration state
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
-        conn.commit()
-
-    console.print("[green]Tablas eliminadas correctamente.[/green]")
-
-    # Run Alembic migrations
-    console.print("[blue]Ejecutando migraciones...[/blue]")
-
-    # Find alembic.ini relative to the project
-    alembic_ini = Path(__file__).parent.parent.parent.parent / "alembic.ini"
-    if not alembic_ini.exists():
-        console.print(f"[red]Error: No se encontró alembic.ini en {alembic_ini}[/red]")
-        raise typer.Exit(1)
-
-    alembic_cfg = Config(str(alembic_ini))
-    command.upgrade(alembic_cfg, "head")
-
-    console.print("[green]Migraciones aplicadas correctamente.[/green]")
-
-    # Seed default weights if requested
     if seed:
-        console.print("[blue]Seeding pesos por defecto...[/blue]")
-        with SessionLocal() as db:
-            scoring_service = ScoringService(db)
-            config = scoring_service.seed_default_weights()
-            console.print(f"[green]Configuración de scoring creada: {config.name}[/green]")
+        _seed_default_weights()
 
     console.print("\n[bold green]Base de datos reseteada exitosamente![/bold green]")
 
@@ -298,34 +390,7 @@ def list_matches():
             console.print("[yellow]No matches found. Have you imported data?[/yellow]")
             return
 
-        table = Table(title="Matches")
-        table.add_column("ID", justify="right", style="cyan")
-        table.add_column("Opponent", style="white")
-        table.add_column("Date", style="blue")
-        table.add_column("Location", style="magenta")
-        table.add_column("Result", style="yellow")
-        table.add_column("Score", justify="center")
-        table.add_column("Players", justify="right")
-
-        for match in matches:
-            date_str = str(match.match_date) if match.match_date else "-"
-            location_str = match.location if match.location else "-"
-            result_str = match.result if match.result else "-"
-            if match.our_score is not None and match.opponent_score is not None:
-                score_str = f"{match.our_score} - {match.opponent_score}"
-            else:
-                score_str = "-"
-            table.add_row(
-                str(match.id),
-                match.opponent_name,
-                date_str,
-                location_str,
-                result_str,
-                score_str,
-                str(len(match.player_stats)),
-            )
-
-        console.print(table)
+        console.print(_create_matches_table(matches))
 
 
 @app.command()
@@ -348,18 +413,7 @@ def regenerate_analysis(
         ai_service.analyze_and_save(match)
         db.commit()
 
-        if match.ai_analysis:
-            console.print("[green]AI analysis generated successfully![/green]")
-            console.print("\n[bold]Analysis Preview:[/bold]")
-            # Show first 500 characters
-            preview = match.ai_analysis[:500]
-            if len(match.ai_analysis) > 500:
-                preview += "..."
-            console.print(preview)
-        elif match.ai_analysis_error:
-            console.print(f"[red]Error generating analysis: {match.ai_analysis_error}[/red]")
-        else:
-            console.print("[yellow]No analysis generated (AI may not be configured)[/yellow]")
+        _print_analysis_result(match)
 
 
 if __name__ == "__main__":

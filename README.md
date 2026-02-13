@@ -121,7 +121,7 @@ PostgreSQL connection:
 
 ## Scoring System
 
-Each of the 16 tracked actions has an individual weight **per position** (1-15), stored in the `scoring_weights` table. Positions 1-8 (forwards) and 9-15 (backs) start with different default base values.
+Each of the 16 tracked actions (defined in `constants.py` as `STAT_FIELDS`) has an individual weight **per position** (1-15), stored in the `scoring_weights` table. Default weights are defined in `constants.py` as `DEFAULT_SCORING_WEIGHTS`.
 
 **Key constants:**
 - `STANDARD_MATCH_DURATION = 70` — match duration for score normalization

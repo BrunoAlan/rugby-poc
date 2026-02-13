@@ -6,9 +6,13 @@ import httpx
 from sqlalchemy.orm import Session
 
 from rugby_stats.config import get_settings
-from rugby_stats.constants import get_group_for_position, get_position_label
+from rugby_stats.constants import (
+    DEFAULT_SCORING_WEIGHTS,
+    STAT_FIELDS,
+    get_group_for_position,
+    get_position_label,
+)
 from rugby_stats.models import Match, PlayerMatchStats, ScoringConfiguration
-from rugby_stats.models.scoring_config import DEFAULT_SCORING_WEIGHTS
 
 
 SYSTEM_PROMPT = """Sos un analista experto de rugby argentino. Tu tarea es analizar partidos y rendimientos de jugadores usando datos estadísticos.
@@ -77,7 +81,9 @@ def build_player_evolution_system_prompt(
     lines.append("Generá tu análisis con las siguientes secciones usando markdown:")
     lines.append("")
     lines.append("## Progreso General")
-    lines.append("Un párrafo evaluando la tendencia general del jugador (mejorando, estable, en baja).")
+    lines.append(
+        "Un párrafo evaluando la tendencia general del jugador (mejorando, estable, en baja)."
+    )
     lines.append("")
 
     for section_title, section_instructions in group["output_sections"]:
@@ -86,10 +92,14 @@ def build_player_evolution_system_prompt(
         lines.append("")
 
     lines.append("## Alertas del Último Partido")
-    lines.append("Comentario sobre las anomalías detectadas en el último partido (tanto positivas como negativas).")
+    lines.append(
+        "Comentario sobre las anomalías detectadas en el último partido (tanto positivas como negativas)."
+    )
     lines.append("")
     lines.append("## Recomendaciones")
-    lines.append("2-3 sugerencias concretas para el jugador, enfocadas en su rol de posición.")
+    lines.append(
+        "2-3 sugerencias concretas para el jugador, enfocadas en su rol de posición."
+    )
 
     return "\n".join(lines)
 
@@ -259,9 +269,9 @@ class AIAnalysisService:
     ) -> list[tuple[str, float]]:
         """Return the top N positive-weighted actions for a position, sorted by weight desc."""
         weights = [
-            (action, w[position])
-            for action, w in DEFAULT_SCORING_WEIGHTS.items()
-            if w.get(position, 0) > 0
+            (action, position_weights[position])
+            for action, position_weights in DEFAULT_SCORING_WEIGHTS.items()
+            if position_weights.get(position, 0) > 0
         ]
         weights.sort(key=lambda x: x[1], reverse=True)
         return weights[:top_n]
@@ -282,8 +292,7 @@ class AIAnalysisService:
                 action_avgs.setdefault(w.action_name, []).append(w.weight)
 
         averaged = [
-            (action, sum(vals) / len(vals))
-            for action, vals in action_avgs.items()
+            (action, sum(vals) / len(vals)) for action, vals in action_avgs.items()
         ]
         averaged.sort(key=lambda x: x[1], reverse=True)
         return averaged[:top_n]
@@ -306,27 +315,10 @@ class AIAnalysisService:
 
     def _format_team_totals(self, player_stats: list[PlayerMatchStats]) -> str:
         """Calculate and format team totals."""
-        totals = {
-            "tackles_positivos": 0,
-            "tackles": 0,
-            "tackles_errados": 0,
-            "portador": 0,
-            "ruck_ofensivos": 0,
-            "pases": 0,
-            "pases_malos": 0,
-            "perdidas": 0,
-            "recuperaciones": 0,
-            "gana_contacto": 0,
-            "quiebres": 0,
-            "penales": 0,
-            "juego_pie": 0,
-            "recepcion_aire_buena": 0,
-            "recepcion_aire_mala": 0,
-            "try_": 0,
-        }
+        totals = {field: 0 for field in STAT_FIELDS}
 
         for stat in player_stats:
-            for field in totals:
+            for field in STAT_FIELDS:
                 totals[field] += getattr(stat, field, 0) or 0
 
         return (
@@ -393,16 +385,12 @@ class AIAnalysisService:
             priority_stats = [action for action, _ in top]
             if priority_stats:
                 top_str = ", ".join(f"{a} ({w:.1f})" for a, w in top)
-                lines.append(f"- **Acciones más valoradas para esta posición:** {top_str}")
+                lines.append(
+                    f"- **Acciones más valoradas para esta posición:** {top_str}"
+                )
                 lines.append("")
 
-        all_stat_fields = [
-            "tackles_positivos", "tackles", "tackles_errados", "portador",
-            "ruck_ofensivos", "pases", "pases_malos", "perdidas",
-            "recuperaciones", "gana_contacto", "quiebres", "penales",
-            "juego_pie", "recepcion_aire_buena", "recepcion_aire_mala", "try_",
-        ]
-        secondary_stats = [s for s in all_stat_fields if s not in priority_stats]
+        secondary_stats = [s for s in STAT_FIELDS if s not in priority_stats]
 
         lines.extend(["## Historial de Partidos (orden cronológico)", ""])
 
@@ -418,7 +406,7 @@ class AIAnalysisService:
                 lines.append(f"  Principales: {', '.join(pri_parts)}")
                 lines.append(f"  Secundarias: {', '.join(sec_parts)}")
             else:
-                all_parts = [f"{s} {m.get(s, 0)}" for s in all_stat_fields]
+                all_parts = [f"{s} {m.get(s, 0)}" for s in STAT_FIELDS]
                 lines.append(f"{header} {', '.join(all_parts)}")
 
         lines.extend(["", "## Anomalías Detectadas en el Último Partido", ""])
@@ -447,7 +435,9 @@ class AIAnalysisService:
                     f"grupo={comp['group_avg']} ({abs(diff):.0f}% {direction})"
                 )
 
-        lines.extend(["", "Analizá la evolución de este jugador y generá un informe completo."])
+        lines.extend(
+            ["", "Analizá la evolución de este jugador y generá un informe completo."]
+        )
 
         return "\n".join(lines)
 
