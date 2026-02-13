@@ -83,7 +83,7 @@ config/          # Configuration files
 ```
 
 ### Key Models
-- **Player**: name (unique), AI evolution analysis fields (cached)
+- **Player**: name (unique), weight_kg, height_cm, AI evolution analysis fields (cached)
 - **Match**: opponent_name, match_date, scores, AI analysis fields (cached)
 - **PlayerMatchStats**: 16 statistics fields + calculated scores (score_absoluto, puntuacion_final)
 - **ScoringConfiguration/Weight**: position-based multipliers for score calculation
@@ -99,6 +99,7 @@ config/          # Configuration files
 - `GET /{id}/position-comparison` - Player vs position group averages
 - `GET /{id}/evolution-analysis` - Cached AI evolution analysis
 - `POST /{id}/evolution-analysis` - Trigger AI evolution analysis generation
+- `PUT /{id}` - Update player profile (name, weight_kg, height_cm) — 409 on duplicate name
 - `POST /` - Create new player
 - `DELETE /{id}` - Delete player
 

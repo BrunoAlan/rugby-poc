@@ -10,6 +10,7 @@ A rugby match data analysis application with a FastAPI backend and React fronten
 - Time-normalized performance metrics (70-minute standard)
 - REST API for data access
 - CLI for common operations
+- Player profile management (name, weight, height) with inline editing
 - Player evolution reports with anomaly detection
 - AI-powered match and player analysis (via OpenRouter)
 - PDF export for match reports and player evolution reports
@@ -148,7 +149,7 @@ The frontend proxies `/api` requests to the backend via Vite config.
 ### Pages
 - **Rankings**: Player rankings table with match filter, sortable columns
 - **Match Detail**: Per-match stats, AI analysis, PDF export
-- **Player Detail**: Match history, score evolution chart, anomaly alerts, AI evolution analysis, position comparison, PDF export
+- **Player Detail**: Inline-editable profile (name, weight, height), match history, score evolution chart, anomaly alerts, AI evolution analysis, position comparison, PDF export
 - **Scoring Weights**: Position-tabbed weight editor (15 tabs, one per position)
 - **Import**: Excel file upload with drag-and-drop
 
