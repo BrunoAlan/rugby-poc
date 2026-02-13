@@ -224,7 +224,7 @@ export default function PlayerDetail() {
       </div>
 
       {/* Player Summary */}
-      <PlayerSummaryComponent summary={summary} />
+      <PlayerSummaryComponent summary={summary} playerId={summary.player_id} />
 
       {/* Player Alerts */}
       {summary.player_id && (

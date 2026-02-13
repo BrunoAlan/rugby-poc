@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Player, PlayerCreate, PlayerSummary, PlayerWithStats, PlayerAnomalies, PlayerEvolutionAnalysis, PositionComparison } from '../types'
+import type { Player, PlayerCreate, PlayerUpdate, PlayerSummary, PlayerWithStats, PlayerAnomalies, PlayerEvolutionAnalysis, PositionComparison } from '../types'
 
 interface PaginatedResponse<T> {
   items: T[]
@@ -37,7 +37,7 @@ export const playersApi = {
     return response.data
   },
 
-  update: async (id: number, data: Partial<PlayerCreate>): Promise<Player> => {
+  update: async (id: number, data: PlayerUpdate): Promise<Player> => {
     const response = await apiClient.put(`/players/${id}`, data)
     return response.data
   },

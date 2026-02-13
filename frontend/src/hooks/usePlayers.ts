@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playersApi } from '../api/players'
-import type { PlayerCreate } from '../types'
+import type { PlayerCreate, PlayerUpdate } from '../types'
 
 export const usePlayers = (skip = 0, limit = 100) => {
   return useQuery({
@@ -55,11 +55,12 @@ export const useUpdatePlayer = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<PlayerCreate> }) =>
+    mutationFn: ({ id, data }: { id: number; data: PlayerUpdate }) =>
       playersApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['players'] })
       queryClient.invalidateQueries({ queryKey: ['player', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['player', 'summary'] })
     },
   })
 }

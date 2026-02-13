@@ -32,6 +32,8 @@ export interface Player {
   name: string;
   created_at: string;
   updated_at: string;
+  weight_kg: number | null;
+  height_cm: number | null;
 }
 
 export interface PlayerWithStats extends Player {
@@ -45,12 +47,20 @@ export interface PlayerCreate {
   name: string;
 }
 
+export interface PlayerUpdate {
+  name?: string;
+  weight_kg?: number | null;
+  height_cm?: number | null;
+}
+
 export interface PlayerSummary {
   player_id: number;
   player_name: string;
   matches_played: number;
   total_minutes: number | null;
   avg_puntuacion_final: number | null;
+  weight_kg: number | null;
+  height_cm: number | null;
   matches: MatchStat[];
 }
 
