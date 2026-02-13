@@ -10,16 +10,18 @@ Rugby POC - A rugby match data analysis application with a FastAPI backend and R
 
 ### Backend (Python with uv)
 ```bash
+cd backend
 uv sync                                          # Install dependencies
 uv run pytest                                    # Run tests
 uv run pytest tests/test_scoring.py -v          # Run specific test file
 uv run alembic upgrade head                     # Apply database migrations
-uv run uvicorn rugby_stats.main:app --reload    # Start API server (port 8000)
+uv run uvicorn app.main:app --reload            # Start API server (port 8000)
 ```
 
 ### CLI Commands
 ```bash
-uv run rugby import-excel data/Partidos.xlsx    # Import Excel data (--ai flag to generate AI analysis)
+cd backend
+uv run rugby import-excel ../data/Partidos.xlsx  # Import Excel data (--ai flag to generate AI analysis)
 uv run rugby recalculate-scores                 # Recalculate all player scores
 uv run rugby seed-weights                       # Seed default scoring weights (--force to overwrite)
 uv run rugby show-rankings                      # Display rankings in terminal (--match, --opponent, --position, --limit)
@@ -58,7 +60,7 @@ docker compose up -d                             # Start PostgreSQL
 3. FastAPI REST endpoints expose data
 4. React frontend fetches via Axios with React Query caching
 
-### Backend Structure (`src/rugby_stats/`)
+### Backend Structure (`backend/app/`)
 ```
 models/          # SQLAlchemy ORM models
 api/             # FastAPI route handlers
@@ -143,9 +145,9 @@ PostgreSQL 16 via Docker:
 ## Development Workflow
 
 1. `docker compose up -d`
-2. `uv run alembic upgrade head`
-3. `uv run rugby import-excel data/Partidos.xlsx`
-4. `uv run uvicorn rugby_stats.main:app --reload`
+2. `cd backend && uv run alembic upgrade head`
+3. `cd backend && uv run rugby import-excel ../data/Partidos.xlsx`
+4. `cd backend && uv run uvicorn app.main:app --reload`
 5. `cd frontend && pnpm dev`
 6. Frontend: http://localhost:3000 | API docs: http://localhost:8000/docs
 
