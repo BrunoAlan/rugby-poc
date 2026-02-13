@@ -17,6 +17,14 @@ class PlayerCreate(PlayerBase):
     pass
 
 
+class PlayerUpdate(BaseModel):
+    """Schema for updating a player (partial update)."""
+
+    name: str | None = None
+    weight_kg: float | None = None
+    height_cm: float | None = None
+
+
 class Player(PlayerBase):
     """Player response schema."""
 
@@ -25,6 +33,8 @@ class Player(PlayerBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    weight_kg: float | None = None
+    height_cm: float | None = None
 
 
 class PlayerList(BaseModel):
@@ -71,6 +81,8 @@ class PlayerSummary(BaseModel):
     matches_played: int
     total_minutes: float | None = None
     avg_puntuacion_final: float | None = None
+    weight_kg: float | None = None
+    height_cm: float | None = None
     matches: list[PlayerMatchDetail] | None = None
 
 
