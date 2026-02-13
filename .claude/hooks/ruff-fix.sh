@@ -14,7 +14,7 @@ if [[ ! -f "$FILE_PATH" ]]; then
   exit 0
 fi
 
-cd "$CLAUDE_PROJECT_DIR" || exit 0
+cd "$CLAUDE_PROJECT_DIR/backend" || exit 0
 
 CHECK_OUTPUT=$(uv run ruff check --fix "$FILE_PATH" 2>&1)
 FORMAT_OUTPUT=$(uv run ruff format "$FILE_PATH" 2>&1)

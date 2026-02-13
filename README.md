@@ -49,22 +49,22 @@ docker compose up -d
 
 2. Install dependencies:
 ```bash
-uv sync
+cd backend && uv sync
 ```
 
 3. Run migrations:
 ```bash
-uv run alembic upgrade head
+cd backend && uv run alembic upgrade head
 ```
 
 4. Import data:
 ```bash
-uv run rugby import-excel data/Partidos.xlsx
+cd backend && uv run rugby import-excel ../data/Partidos.xlsx
 ```
 
 5. Start the API server:
 ```bash
-uv run uvicorn rugby_stats.main:app --reload
+cd backend && uv run uvicorn app.main:app --reload
 ```
 
 6. Start the frontend:
@@ -81,9 +81,13 @@ pnpm dev
 
 ## CLI Commands
 
+All CLI commands run from the `backend/` directory:
+
 ```bash
+cd backend
+
 # Import Excel data (--ai flag to also generate AI analysis)
-uv run rugby import-excel data/Partidos.xlsx
+uv run rugby import-excel ../data/Partidos.xlsx
 
 # Recalculate all scores
 uv run rugby recalculate-scores
@@ -171,5 +175,5 @@ Match and player analyses are generated via the OpenRouter API:
 ## Running Tests
 
 ```bash
-uv run pytest
+cd backend && uv run pytest
 ```
