@@ -309,7 +309,13 @@ class ScoringService:
 
         stats_list = player.match_stats
         if not stats_list:
-            return {"player_id": player.id, "player_name": player_name, "matches_played": 0}
+            return {
+                "player_id": player.id,
+                "player_name": player_name,
+                "matches_played": 0,
+                "weight_kg": player.weight_kg,
+                "height_cm": player.height_cm,
+            }
 
         total_tiempo = sum(s.tiempo_juego or 0 for s in stats_list)
         avg_score = (
@@ -324,6 +330,8 @@ class ScoringService:
             "matches_played": len(stats_list),
             "total_minutes": round(total_tiempo, 1),
             "avg_puntuacion_final": round(avg_score, 2),
+            "weight_kg": player.weight_kg,
+            "height_cm": player.height_cm,
             "matches": [
                 {
                     "match_id": s.match_id,
