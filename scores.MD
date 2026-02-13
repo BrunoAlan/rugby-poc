@@ -22,7 +22,7 @@ Este documento describe en detalle cómo se calculan las puntuaciones de los jug
 
 El sistema de puntuación de Rugby Stats evalúa el rendimiento de cada jugador en cada partido mediante un algoritmo que:
 
-1. **Pondera las estadísticas** según la posición del jugador (forwards vs backs)
+1. **Pondera las estadísticas** según la posición exacta del jugador (1-15), con pesos individuales por puesto
 2. **Normaliza el tiempo de juego** para comparar jugadores con diferentes minutos en cancha
 3. **Previene la inflación de puntuaciones** en jugadores con poco tiempo de juego
 
@@ -40,7 +40,7 @@ Es la suma ponderada de todas las estadísticas del jugador en el partido. Repre
 
 **Características:**
 - Se calcula sumando cada estadística multiplicada por su peso correspondiente
-- Los pesos varían según si el jugador es forward (puestos 1-8) o back (puestos 9-15)
+- Los pesos son específicos para cada posición (1-15), no simplemente forwards vs backs
 - Puede ser positivo o negativo dependiendo del balance entre acciones positivas y errores
 - No considera el tiempo de juego
 
@@ -60,21 +60,21 @@ Es el score normalizado a 70 minutos de juego. Permite comparar jugadores que ju
 ### Paso 1: Cálculo del Score Absoluto
 
 ```
-score_absoluto = Σ (estadística × peso)
+score_absoluto = Σ (estadística × peso_para_posición)
 ```
 
 Donde:
 - **Σ** = Sumatoria de todas las estadísticas
 - **estadística** = Valor numérico de cada acción (tackles, pases, etc.)
-- **peso** = Multiplicador según la posición del jugador
+- **peso_para_posición** = Multiplicador específico de la posición del jugador (1-15)
 
-**Ejemplo:**
+**Ejemplo (Puesto 7 - Ala):**
 ```
-tackles_positivos: 5  ×  peso_forward: 5.0  =  25.0
-tackles_errados: 2    ×  peso_forward: -4.0 =  -8.0
-ruck_ofensivos: 8     ×  peso_forward: 2.5  =  20.0
-                                            -------
-                              score_absoluto = 37.0
+tackles_positivos: 5  ×  peso_pos_7: 6.5  =  32.5
+tackles_errados: 2    ×  peso_pos_7: -5.0 =  -10.0
+ruck_ofensivos: 8     ×  peso_pos_7: 2.5  =  20.0
+                                           -------
+                             score_absoluto = 42.5
 ```
 
 ### Paso 2: Cálculo del Tiempo Efectivo
@@ -97,59 +97,69 @@ Esta fórmula proyecta el rendimiento a un partido completo de 70 minutos.
 
 ## Sistema de Pesos
 
-Los pesos determinan cuánto impacta cada estadística en la puntuación final. Están diferenciados por posición:
+Los pesos determinan cuánto impacta cada estadística en la puntuación final. Cada posición (1-15) tiene un peso individual para cada una de las 16 estadísticas, almacenados en la tabla `scoring_weights` como una fila por `(config_id, action_name, position)`.
 
-### Clasificación de Posiciones
+### Posiciones
 
-| Tipo | Puestos | Posiciones |
-|------|---------|------------|
-| **Forwards** | 1-8 | Pilares, Hooker, Segunda línea, Flankers, Número 8 |
-| **Backs** | 9-15 | Medio scrum, Apertura, Centros, Wings, Fullback |
+| Puesto | Posición | Grupo |
+|:------:|----------|-------|
+| 1 | Pilar Izquierdo | Pilares |
+| 2 | Hooker | Hooker |
+| 3 | Pilar Derecho | Pilares |
+| 4 | 2da Línea | 2da Línea |
+| 5 | 2da Línea | 2da Línea |
+| 6 | Ala (Flanker) | Tercera Línea |
+| 7 | Ala (Flanker) | Tercera Línea |
+| 8 | N°8 | Tercera Línea |
+| 9 | Medio Scrum | Medios |
+| 10 | Apertura | Medios |
+| 11 | Wing | Back 3 |
+| 12 | Centro Interior | Centros |
+| 13 | Centro Exterior | Centros |
+| 14 | Wing | Back 3 |
+| 15 | Fullback | Back 3 |
 
-### Tabla de Pesos por Estadística
+### Pesos por Defecto
 
-| Estadística | Peso Forwards | Peso Backs | Tipo | Descripción |
-|-------------|:-------------:|:----------:|:----:|-------------|
-| `tackles_positivos` | **+5.0** | +3.0 | Positivo | Tackles efectivos que detienen al rival |
-| `tackles` | +2.0 | +1.5 | Positivo | Total de tackles intentados |
-| `tackles_errados` | **-4.0** | -3.0 | Negativo | Tackles fallados que permiten avance rival |
-| `portador` | +1.5 | +1.2 | Positivo | Veces que el jugador llevó la pelota |
-| `ruck_ofensivos` | **+2.5** | +0.5 | Positivo | Participación en rucks de ataque |
-| `pases` | +0.5 | **+1.2** | Positivo | Pases realizados correctamente |
-| `pases_malos` | -2.0 | **-4.0** | Negativo | Pases errados o interceptados |
-| `perdidas` | -4.0 | **-5.0** | Negativo | Pérdidas de balón |
-| `recuperaciones` | **+5.0** | +4.0 | Positivo | Recuperaciones de balón al rival |
-| `gana_contacto` | +3.0 | **+4.0** | Positivo | Contactos físicos ganados |
-| `quiebres` | +4.0 | **+7.0** | Positivo | Líneas defensivas quebradas |
-| `penales` | **-5.0** | -4.0 | Negativo | Penales concedidos |
-| `juego_pie` | +1.0 | **+3.0** | Positivo | Juego táctico con el pie |
-| `recepcion_aire_buena` | +3.0 | **+5.0** | Positivo | Recepciones aéreas exitosas |
-| `recepcion_aire_mala` | -3.0 | **-4.0** | Negativo | Recepciones aéreas falladas |
-| `try_` | +10.0 | **+12.0** | Positivo | Tries anotados |
+Los pesos por defecto están definidos en `backend/app/constants.py` (`DEFAULT_SCORING_WEIGHTS`). Cada celda muestra el peso para esa posición. En **negrita** los valores más altos (positivos) o más bajos (negativos) de cada fila.
+
+#### Acciones Positivas
+
+| Estadística | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tackles_positivos | 4.5 | 4.5 | 4.5 | 5.0 | 5.0 | 5.5 | **6.5** | 5.0 | 3.5 | 3.0 | 2.5 | 4.0 | 3.5 | 2.5 | 3.0 |
+| tackles | 2.0 | 2.0 | 2.0 | 2.0 | 2.0 | 2.5 | **3.0** | 2.5 | 1.5 | 1.5 | 1.0 | 2.0 | 1.8 | 1.0 | 1.5 |
+| portador | 1.5 | 1.5 | 1.5 | 1.5 | 1.5 | 2.0 | 2.0 | **2.5** | 1.0 | 1.5 | 2.0 | 2.0 | 2.0 | 2.0 | 1.5 |
+| ruck_ofensivos | **3.0** | 2.5 | **3.0** | **3.0** | **3.0** | 2.5 | 2.5 | 2.5 | 0.5 | 0.5 | 0.5 | 1.0 | 0.5 | 0.5 | 0.5 |
+| pases | 0.3 | 0.5 | 0.3 | 0.3 | 0.3 | 0.5 | 0.5 | 0.8 | **2.0** | 1.8 | 1.0 | 1.2 | 1.2 | 1.0 | 1.0 |
+| recuperaciones | 4.5 | 5.0 | 4.5 | 5.0 | 5.0 | 5.5 | **6.5** | 5.5 | 4.0 | 3.5 | 3.5 | 4.0 | 4.0 | 3.5 | 4.0 |
+| gana_contacto | 3.0 | 3.0 | 3.0 | 3.0 | 3.0 | 3.5 | 3.5 | 4.0 | 3.0 | 3.5 | 4.0 | **4.5** | **4.5** | 4.0 | 3.5 |
+| quiebres | 3.0 | 3.5 | 3.0 | 3.5 | 3.5 | 4.5 | 4.5 | 5.0 | 5.5 | 6.0 | **7.5** | 6.5 | 7.0 | **7.5** | 6.0 |
+| juego_pie | 0.5 | 0.5 | 0.5 | 0.5 | 0.5 | 0.8 | 0.8 | 1.5 | 2.5 | **4.0** | 2.0 | 2.0 | 2.0 | 2.0 | 3.5 |
+| recepcion_aire_buena | 2.0 | 2.5 | 2.0 | 4.0 | 4.0 | 3.0 | 3.0 | 3.5 | 3.0 | 4.0 | 4.5 | 3.5 | 3.5 | 4.5 | **5.5** |
+| try_ | 8.0 | 8.5 | 8.0 | 9.0 | 9.0 | 9.5 | 10.0 | 10.0 | 10.0 | 10.5 | **12.0** | 11.0 | 11.0 | **12.0** | 10.5 |
+
+#### Acciones Negativas
+
+| Estadística | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tackles_errados | -3.5 | -3.5 | -3.5 | -4.0 | -4.0 | -4.5 | **-5.0** | -4.0 | -3.0 | -3.0 | -2.5 | -3.5 | -3.0 | -2.5 | -3.0 |
+| pases_malos | -1.5 | -2.0 | -1.5 | -1.5 | -1.5 | -2.0 | -2.0 | -2.5 | **-5.0** | -4.5 | -3.5 | -4.0 | -4.0 | -3.5 | -3.5 |
+| perdidas | -3.5 | -3.5 | -3.5 | -4.0 | -4.0 | -4.0 | -4.0 | -4.5 | -4.5 | **-5.0** | **-5.0** | **-5.0** | **-5.0** | **-5.0** | -4.5 |
+| penales | **-5.5** | -5.0 | **-5.5** | -5.0 | -5.0 | -5.0 | **-6.0** | -5.0 | -4.0 | -4.0 | -3.5 | -4.0 | -4.0 | -3.5 | -4.0 |
+| recepcion_aire_mala | -2.0 | -2.5 | -2.0 | -3.5 | -3.5 | -3.0 | -3.0 | -3.0 | -3.0 | -3.5 | -4.0 | -3.5 | -3.5 | -4.0 | **-5.0** |
 
 ### Filosofía de los Pesos
 
-#### Acciones Positivas (pesos positivos)
-- Recompensan acciones que benefician al equipo
-- A mayor impacto de la acción, mayor peso
+Los pesos reflejan las demandas específicas de cada posición:
 
-#### Errores (pesos negativos)
-- Penalizan acciones que perjudican al equipo
-- Un tackle errado o una pérdida pueden cambiar el partido
-
-#### Diferenciación por Posición
-
-**Forwards tienen más peso en:**
-- Tackles (defensivos y agresivos)
-- Rucks ofensivos (trabajo físico en breakdown)
-- Recuperaciones (robo de balón)
-- Penales (más penalizados por infracciones)
-
-**Backs tienen más peso en:**
-- Pases (son distribuidores principales)
-- Quiebres (se espera que rompan líneas)
-- Tries (finalizadores naturales)
-- Juego aéreo y de pie (habilidades técnicas)
+- **Pilares (1, 3)**: Alto peso en rucks ofensivos y trabajo físico. Penalización fuerte por infracciones (penales -5.5).
+- **Hooker (2)**: Similar a pilares pero con mayor peso en distribución y recuperaciones.
+- **2da Línea (4, 5)**: Valoran tackles positivos, recepción aérea y trabajo de ruck. Son la referencia en el juego aéreo.
+- **Tercera Línea (6, 7, 8)**: Los pesos más altos en tackles positivos (7: 6.5) y recuperaciones (7: 6.5). Los más dinámicos del pack.
+- **Medios (9, 10)**: Dominan en pases y juego al pie. Penalización severa por pases malos (9: -5.0). La apertura (10) tiene el peso más alto en juego_pie (4.0).
+- **Centros (12, 13)**: Alto peso en gana_contacto (4.5) y quiebres. Combinan choque con distribución.
+- **Back 3 (11, 14, 15)**: Máximo peso en quiebres (7.5), tries (12.0) y recepción aérea. El fullback (15) tiene el mayor peso en recepcion_aire_buena (5.5).
 
 ---
 
@@ -162,13 +172,11 @@ Sin control, un jugador que juega pocos minutos puede obtener puntuaciones exage
 **Ejemplo sin piso de normalización:**
 ```
 Jugador: Suplente que entró 10 minutos
-Estadísticas: 2 tackles positivos
+Estadísticas: 2 tackles positivos (puesto 7)
 
-score_absoluto = 2 × 5.0 = 10
-puntuacion_final = (10 / 10) × 70 = 70  ← ¡Puntuación inflada!
+score_absoluto = 2 × 6.5 = 13
+puntuacion_final = (13 / 10) × 70 = 91  ← ¡Puntuación inflada!
 ```
-
-Este jugador aparecería con la misma puntuación que alguien que jugó 70 minutos completos.
 
 ### La Solución: Piso de Normalización
 
@@ -177,11 +185,11 @@ Se establece un **piso mínimo de 40 minutos** para el cálculo:
 **Ejemplo con piso de normalización:**
 ```
 Jugador: Suplente que entró 10 minutos
-Estadísticas: 2 tackles positivos
+Estadísticas: 2 tackles positivos (puesto 7)
 
-score_absoluto = 2 × 5.0 = 10
+score_absoluto = 2 × 6.5 = 13
 tiempo_efectivo = max(10, 40) = 40  ← Se aplica el piso
-puntuacion_final = (10 / 40) × 70 = 20  ← Puntuación realista
+puntuacion_final = (13 / 40) × 70 = 22.75  ← Puntuación realista
 ```
 
 ### Comportamiento por Tiempo de Juego
@@ -209,7 +217,7 @@ El sistema utiliza tres constantes fundamentales definidas en el código:
 ### Ubicación en el Código
 
 ```python
-# services/scoring.py
+# backend/app/services/scoring.py
 
 STANDARD_MATCH_DURATION = 70
 MIN_MINUTES_FOR_RANKING = 20
@@ -255,79 +263,79 @@ Los rankings pueden filtrarse por:
 
 ## Ejemplos Prácticos
 
-### Ejemplo 1: Forward con Partido Completo
+### Ejemplo 1: Segunda Línea con Partido Completo
 
 ```
 Jugador: Juan Pérez
-Posición: Puesto 4 (Segunda línea - Forward)
+Posición: Puesto 4 (2da Línea)
 Tiempo de juego: 70 minutos
 
 Estadísticas del partido:
-┌─────────────────────┬───────┬───────────┬───────────┐
-│ Estadística         │ Valor │ Peso Fwd  │ Subtotal  │
-├─────────────────────┼───────┼───────────┼───────────┤
-│ tackles_positivos   │   8   │   +5.0    │   +40.0   │
-│ tackles             │  12   │   +2.0    │   +24.0   │
-│ tackles_errados     │   2   │   -4.0    │    -8.0   │
-│ portador            │   5   │   +1.5    │    +7.5   │
-│ ruck_ofensivos      │  10   │   +2.5    │   +25.0   │
-│ pases               │   3   │   +0.5    │    +1.5   │
-│ pases_malos         │   1   │   -2.0    │    -2.0   │
-│ perdidas            │   0   │   -4.0    │     0.0   │
-│ recuperaciones      │   1   │   +5.0    │    +5.0   │
-│ gana_contacto       │   4   │   +3.0    │   +12.0   │
-│ quiebres            │   1   │   +4.0    │    +4.0   │
-│ penales             │   1   │   -5.0    │    -5.0   │
-│ juego_pie           │   0   │   +1.0    │     0.0   │
-│ recepcion_aire_buena│   2   │   +3.0    │    +6.0   │
-│ recepcion_aire_mala │   0   │   -3.0    │     0.0   │
-│ try_                │   0   │  +10.0    │     0.0   │
-└─────────────────────┴───────┴───────────┴───────────┘
+┌─────────────────────┬───────┬──────────┬───────────┐
+│ Estadística         │ Valor │ Peso P.4 │ Subtotal  │
+├─────────────────────┼───────┼──────────┼───────────┤
+│ tackles_positivos   │   8   │   +5.0   │   +40.0   │
+│ tackles             │  12   │   +2.0   │   +24.0   │
+│ tackles_errados     │   2   │   -4.0   │    -8.0   │
+│ portador            │   5   │   +1.5   │    +7.5   │
+│ ruck_ofensivos      │  10   │   +3.0   │   +30.0   │
+│ pases               │   3   │   +0.3   │    +0.9   │
+│ pases_malos         │   1   │   -1.5   │    -1.5   │
+│ perdidas            │   0   │   -4.0   │     0.0   │
+│ recuperaciones      │   1   │   +5.0   │    +5.0   │
+│ gana_contacto       │   4   │   +3.0   │   +12.0   │
+│ quiebres            │   1   │   +3.5   │    +3.5   │
+│ penales             │   1   │   -5.0   │    -5.0   │
+│ juego_pie           │   0   │   +0.5   │     0.0   │
+│ recepcion_aire_buena│   2   │   +4.0   │    +8.0   │
+│ recepcion_aire_mala │   0   │   -3.5   │     0.0   │
+│ try_                │   0   │   +9.0   │     0.0   │
+└─────────────────────┴───────┴──────────┴───────────┘
 
 Cálculo:
-score_absoluto = 40 + 24 - 8 + 7.5 + 25 + 1.5 - 2 + 5 + 12 + 4 - 5 + 6 = 110.0
+score_absoluto = 40 + 24 - 8 + 7.5 + 30 + 0.9 - 1.5 + 5 + 12 + 3.5 - 5 + 8 = 116.4
 
 tiempo_efectivo = max(70, 40) = 70
 
-puntuacion_final = (110.0 / 70) × 70 = 110.0
+puntuacion_final = (116.4 / 70) × 70 = 116.4
 ```
 
-**Resultado:** Puntuación final de **110.0** - Excelente rendimiento.
+**Resultado:** Puntuación final de **116.4** - Excelente rendimiento.
 
 ---
 
-### Ejemplo 2: Back Suplente (25 minutos)
+### Ejemplo 2: Wing Suplente (25 minutos)
 
 ```
 Jugador: Carlos García
-Posición: Puesto 14 (Wing - Back)
+Posición: Puesto 14 (Wing)
 Tiempo de juego: 25 minutos
 
 Estadísticas del partido:
 ┌─────────────────────┬───────┬───────────┬───────────┐
-│ Estadística         │ Valor │ Peso Back │ Subtotal  │
+│ Estadística         │ Valor │ Peso P.14 │ Subtotal  │
 ├─────────────────────┼───────┼───────────┼───────────┤
-│ tackles_positivos   │   2   │   +3.0    │    +6.0   │
-│ tackles             │   3   │   +1.5    │    +4.5   │
-│ tackles_errados     │   1   │   -3.0    │    -3.0   │
-│ portador            │   4   │   +1.2    │    +4.8   │
-│ quiebres            │   2   │   +7.0    │   +14.0   │
+│ tackles_positivos   │   2   │   +2.5    │    +5.0   │
+│ tackles             │   3   │   +1.0    │    +3.0   │
+│ tackles_errados     │   1   │   -2.5    │    -2.5   │
+│ portador            │   4   │   +2.0    │    +8.0   │
+│ quiebres            │   2   │   +7.5    │   +15.0   │
 │ try_                │   1   │  +12.0    │   +12.0   │
-│ pases               │   8   │   +1.2    │    +9.6   │
-│ pases_malos         │   0   │   -4.0    │     0.0   │
+│ pases               │   8   │   +1.0    │    +8.0   │
+│ pases_malos         │   0   │   -3.5    │     0.0   │
 └─────────────────────┴───────┴───────────┴───────────┘
 
 Cálculo:
-score_absoluto = 6 + 4.5 - 3 + 4.8 + 14 + 12 + 9.6 = 47.9
+score_absoluto = 5 + 3 - 2.5 + 8 + 15 + 12 + 8 = 48.5
 
 tiempo_efectivo = max(25, 40) = 40  ← Se aplica el piso
 
-puntuacion_final = (47.9 / 40) × 70 = 83.8
+puntuacion_final = (48.5 / 40) × 70 = 84.9
 ```
 
-**Sin el piso sería:** `(47.9 / 25) × 70 = 134.1` ← Inflado artificialmente
+**Sin el piso sería:** `(48.5 / 25) × 70 = 135.8` ← Inflado artificialmente
 
-**Resultado:** Puntuación final de **83.8** - Muy buen rendimiento en el tiempo jugado.
+**Resultado:** Puntuación final de **84.9** - Muy buen rendimiento en el tiempo jugado.
 
 ---
 
@@ -335,15 +343,15 @@ puntuacion_final = (47.9 / 40) × 70 = 83.8
 
 ```
 Jugador: Luis Martínez
-Posición: Puesto 21 (Suplente)
+Posición: Puesto 6 (Ala)
 Tiempo de juego: 8 minutos
 
 Estadísticas: 1 tackle positivo
 
 Cálculo:
-score_absoluto = 1 × 5.0 = 5.0
+score_absoluto = 1 × 5.5 = 5.5
 tiempo_efectivo = max(8, 40) = 40
-puntuacion_final = (5 / 40) × 70 = 8.75
+puntuacion_final = (5.5 / 40) × 70 = 9.6
 ```
 
 **Importante:** Este jugador:
@@ -352,34 +360,34 @@ puntuacion_final = (5 / 40) × 70 = 8.75
 
 ---
 
-### Ejemplo 4: Partido con Rendimiento Negativo
+### Ejemplo 4: Medio Scrum con Rendimiento Negativo
 
 ```
 Jugador: Pedro Sánchez
-Posición: Puesto 9 (Medio scrum - Back)
+Posición: Puesto 9 (Medio Scrum)
 Tiempo de juego: 60 minutos
 
 Estadísticas del partido:
-┌─────────────────────┬───────┬───────────┬───────────┐
-│ Estadística         │ Valor │ Peso Back │ Subtotal  │
-├─────────────────────┼───────┼───────────┼───────────┤
-│ tackles_positivos   │   1   │   +3.0    │    +3.0   │
-│ tackles_errados     │   4   │   -3.0    │   -12.0   │
-│ pases               │  15   │   +1.2    │   +18.0   │
-│ pases_malos         │   6   │   -4.0    │   -24.0   │
-│ perdidas            │   3   │   -5.0    │   -15.0   │
-│ penales             │   2   │   -4.0    │    -8.0   │
-└─────────────────────┴───────┴───────────┴───────────┘
+┌─────────────────────┬───────┬──────────┬───────────┐
+│ Estadística         │ Valor │ Peso P.9 │ Subtotal  │
+├─────────────────────┼───────┼──────────┼───────────┤
+│ tackles_positivos   │   1   │   +3.5   │    +3.5   │
+│ tackles_errados     │   4   │   -3.0   │   -12.0   │
+│ pases               │  15   │   +2.0   │   +30.0   │
+│ pases_malos         │   6   │   -5.0   │   -30.0   │
+│ perdidas            │   3   │   -4.5   │   -13.5   │
+│ penales             │   2   │   -4.0   │    -8.0   │
+└─────────────────────┴───────┴──────────┴───────────┘
 
 Cálculo:
-score_absoluto = 3 - 12 + 18 - 24 - 15 - 8 = -38.0
+score_absoluto = 3.5 - 12 + 30 - 30 - 13.5 - 8 = -30.0
 
 tiempo_efectivo = max(60, 40) = 60
 
-puntuacion_final = (-38.0 / 60) × 70 = -44.3
+puntuacion_final = (-30.0 / 60) × 70 = -35.0
 ```
 
-**Resultado:** Puntuación final de **-44.3** - Partido muy negativo con muchos errores.
+**Resultado:** Puntuación final de **-35.0** - Partido muy negativo. Notar que el peso de pases_malos para puesto 9 (-5.0) es el más severo del sistema, reflejando que un medio scrum no puede permitirse errores de distribución.
 
 ---
 
@@ -389,9 +397,9 @@ puntuacion_final = (-38.0 / 60) × 70 = -44.3
 
 Los pesos se pueden modificar desde tres lugares:
 
-1. **Interfaz de Usuario**: Página `/scoring` en el frontend
+1. **Interfaz de Usuario**: Página `/scoring` en el frontend con pestañas por posición (15 pestañas, una por puesto)
 2. **Base de Datos**: Tabla `scoring_weights`
-3. **Código**: Constante `DEFAULT_SCORING_WEIGHTS` en `models/scoring_config.py`
+3. **Código**: Constante `DEFAULT_SCORING_WEIGHTS` en `backend/app/constants.py`
 
 ### Estructura de Base de Datos
 
@@ -404,23 +412,25 @@ CREATE TABLE scoring_configurations (
     is_active BOOLEAN DEFAULT FALSE
 );
 
--- Pesos por acción y posición
+-- Pesos por acción y posición (una fila por config × acción × posición)
 CREATE TABLE scoring_weights (
     id SERIAL PRIMARY KEY,
     config_id INTEGER REFERENCES scoring_configurations(id),
     action_name VARCHAR(50) NOT NULL,
-    forwards_weight FLOAT NOT NULL,
-    backs_weight FLOAT NOT NULL,
-    UNIQUE(config_id, action_name)
+    position INTEGER NOT NULL,
+    weight FLOAT NOT NULL,
+    UNIQUE(config_id, action_name, position)
 );
 ```
+
+Esto genera **240 filas** por configuración (16 acciones × 15 posiciones).
 
 ### Recalcular Puntuaciones
 
 Después de modificar los pesos, es necesario recalcular todas las puntuaciones existentes:
 
 ```bash
-uv run rugby recalculate-scores
+cd backend && uv run rugby recalculate-scores
 ```
 
 Este comando:
@@ -434,10 +444,12 @@ Este comando:
 
 | Archivo | Descripción |
 |---------|-------------|
-| `src/rugby_stats/services/scoring.py` | Lógica principal de cálculo de scores |
-| `src/rugby_stats/models/scoring_config.py` | Modelos ORM y pesos por defecto |
-| `src/rugby_stats/api/stats.py` | Endpoints de rankings |
-| `src/rugby_stats/cli/commands.py` | Comandos CLI para recálculo |
+| `backend/app/services/scoring.py` | Lógica principal de cálculo de scores |
+| `backend/app/constants.py` | Pesos por defecto (`DEFAULT_SCORING_WEIGHTS`), estadísticas y grupos de posición |
+| `backend/app/models/scoring_config.py` | Modelos ORM (`ScoringConfiguration`, `ScoringWeight`) |
+| `backend/app/api/stats.py` | Endpoints de rankings |
+| `backend/app/api/scoring.py` | Endpoints de configuración de pesos |
+| `backend/app/cli/commands.py` | Comandos CLI para recálculo |
 
 ---
 
@@ -446,15 +458,15 @@ Este comando:
 El sistema de puntuación de Rugby Stats está diseñado para:
 
 1. **Evaluar objetivamente** el rendimiento de cada jugador
-2. **Diferenciar por posición** (forwards vs backs) con pesos específicos
+2. **Diferenciar por posición** (15 puestos individuales) con pesos específicos para cada uno
 3. **Normalizar el tiempo de juego** para comparaciones justas
 4. **Prevenir la inflación** en jugadores con poco tiempo en cancha
-5. **Ofrecer flexibilidad** permitiendo ajustar los pesos según necesidad
+5. **Ofrecer flexibilidad** permitiendo ajustar los pesos por posición desde la interfaz
 
 La fórmula central es:
 
 ```
-puntuacion_final = (Σ(estadística × peso) / max(tiempo_juego, 40)) × 70
+puntuacion_final = (Σ(estadística × peso_para_posición) / max(tiempo_juego, 40)) × 70
 ```
 
-Esta metodología asegura que las puntuaciones sean comparables, justas y reflejen el verdadero impacto de cada jugador en el partido.
+Esta metodología asegura que las puntuaciones sean comparables, justas y reflejen el verdadero impacto de cada jugador en el partido según las demandas específicas de su puesto.
