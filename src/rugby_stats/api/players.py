@@ -16,6 +16,7 @@ from rugby_stats.schemas import (
     PlayerEvolutionAnalysis,
     PlayerList,
     PlayerSummary,
+    PlayerUpdate,
     PlayerWithStats,
     PlayerWithStatsList,
     PositionComparison,
@@ -227,6 +228,31 @@ def trigger_evolution_analysis(
         player_name=player.name,
         status="processing",
     )
+
+
+@router.put("/{player_id}", response_model=Player)
+def update_player(player_id: int, player_data: PlayerUpdate, db: Session = Depends(get_db)):
+    """Update a player's profile fields."""
+    player = db.query(PlayerModel).filter(PlayerModel.id == player_id).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    update_dict = player_data.model_dump(exclude_unset=True)
+
+    if "name" in update_dict and update_dict["name"] != player.name:
+        existing = db.query(PlayerModel).filter(
+            PlayerModel.name == update_dict["name"],
+            PlayerModel.id != player_id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="A player with this name already exists")
+
+    for key, value in update_dict.items():
+        setattr(player, key, value)
+
+    db.commit()
+    db.refresh(player)
+    return player
 
 
 @router.post("/", response_model=Player)
