@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rugby}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rugby123}
+      POSTGRES_DB: ${POSTGRES_DB:-rugby_stats}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rugby} -d ${POSTGRES_DB:-rugby_stats}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-rugby}:${POSTGRES_PASSWORD:-rugby123}@db:5432/${POSTGRES_DB:-rugby_stats}"
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
