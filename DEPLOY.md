@@ -89,3 +89,41 @@ Find the Pi's IP with: `hostname -I`
 - Use a fast SD card (A2 rated) or USB SSD for storage
 - The first build is slow; subsequent starts use cached layers
 - PostgreSQL benefits from SSD storage over SD cards
+
+
+## Public Access with ngrok
+
+To share your application publicly over the internet:
+
+### 1. Configure ngrok
+
+First time setup (if not already done):
+```bash
+ngrok config add-authtoken YOUR_AUTHTOKEN_HERE
+```
+
+Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken
+
+### 2. Start ngrok Tunnel
+
+```bash
+./start-ngrok.sh
+```
+
+This will:
+- Start ngrok tunnel on port 3000
+- Display the public URL
+- Show the dashboard URL (http://localhost:4040)
+
+### 3. Stop ngrok
+
+```bash
+./stop-ngrok.sh
+```
+
+### Notes
+
+- The public URL changes each time you restart ngrok (free tier)
+- First-time visitors will see an ngrok warning page
+- All API requests are automatically proxied through the frontend
+- View real-time traffic at http://localhost:4040 or http://<pi-ip>:4040
