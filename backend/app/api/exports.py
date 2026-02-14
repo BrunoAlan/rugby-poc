@@ -68,13 +68,19 @@ def download_player_report(
 
     scoring_service = ScoringService(db)
     summary = scoring_service.get_player_summary(player.name)
-    position_group, position_comparison = scoring_service.get_position_comparison_for_report(player_id)
+    position_group, position_comparison = (
+        scoring_service.get_position_comparison_for_report(player_id)
+    )
+
+    # Reverse matches for PDF report (newest first)
+    matches_data = summary.get("matches", []) if summary else []
+    matches_data_reversed = list(reversed(matches_data))
 
     pdf_service = PDFGeneratorService()
     pdf_bytes = pdf_service.generate_player_report(
         player_name=player.name,
         position_group=position_group,
-        matches_data=summary.get("matches", []) if summary else [],
+        matches_data=matches_data_reversed,
         anomalies=anomalies,
         position_comparison=position_comparison,
         ai_analysis=player.ai_evolution_analysis,

@@ -279,13 +279,20 @@ class ScoringService:
 
     def get_player_summary(self, player_name: str) -> dict | None:
         """Get a summary of a player's performance across all matches."""
-        from app.models import Player
+        from app.models import Player, Match, PlayerMatchStats
 
         player = self.db.query(Player).filter(Player.name == player_name).first()
         if not player:
             return None
 
-        stats_list = player.match_stats
+        # Get all match stats ordered by match date (oldest first for chronological evolution)
+        stats_list = (
+            self.db.query(PlayerMatchStats)
+            .filter(PlayerMatchStats.player_id == player.id)
+            .join(Match, PlayerMatchStats.match_id == Match.id)
+            .order_by(Match.match_date.asc(), Match.id.asc())
+            .all()
+        )
         if not stats_list:
             return {
                 "player_id": player.id,

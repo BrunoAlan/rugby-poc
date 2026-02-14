@@ -196,11 +196,15 @@ export default function PlayerDetail() {
     )
   }
 
+  // Prepare data for chart (chronological: oldest → newest)
   const chartData = summary.matches.map((match) => ({
     name: `${match.opponent} (${match.team})`,
     value: match.score,
     date: match.match_date ? shortDateFormatter.format(new Date(match.match_date + 'T12:00:00')) : '-',
   }))
+
+  // Prepare data for table (reverse chronological: newest → oldest)
+  const matchesForTable = [...summary.matches].reverse()
 
   return (
     <AnimatedPage className="space-y-6">
@@ -278,13 +282,13 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700/30">
-                {summary.matches.map((match, idx) => (
+                {matchesForTable.map((match, idx) => (
                   <ExpandableMatchRow
                     key={match.match_id || idx}
                     match={match}
                     isExpanded={expandedMatches.has(match.match_id)}
                     onToggle={() => toggleMatch(match.match_id)}
-                    anomalies={idx === summary.matches.length - 1 ? anomaliesData?.anomalies : undefined}
+                    anomalies={idx === 0 ? anomaliesData?.anomalies : undefined}
                   />
                 ))}
               </tbody>
