@@ -6,7 +6,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.constants import STAT_FIELDS, get_group_for_position
+from app.constants import get_group_for_position
 from app.database import SessionLocal
 from app.models import Match, Player, PlayerMatchStats
 from app.services.ai_analysis import AIAnalysisService
@@ -64,7 +64,9 @@ def generate_ai_analysis_background(match_ids: list[int]) -> None:
                         match.ai_analysis_error = str(e)[:500]
                         db.commit()
                 except Exception as inner_e:
-                    logger.error(f"Failed to update error status for match {match_id}: {inner_e}")
+                    logger.error(
+                        f"Failed to update error status for match {match_id}: {inner_e}"
+                    )
                     db.rollback()
 
     finally:
@@ -122,9 +124,12 @@ def _prepare_evolution_data(db: Session, player: Player) -> dict:
 
     from app.models import ScoringConfiguration as ScoringConfigModel
 
-    active_config = db.query(ScoringConfigModel).filter(
-        ScoringConfigModel.is_active.is_(True)
-    ).options(joinedload(ScoringConfigModel.weights)).first()
+    active_config = (
+        db.query(ScoringConfigModel)
+        .filter(ScoringConfigModel.is_active.is_(True))
+        .options(joinedload(ScoringConfigModel.weights))
+        .first()
+    )
 
     return {
         "summary": summary,
@@ -142,9 +147,11 @@ def _calculate_position_comparison(
     group = get_group_for_position(most_common_pos)
     group_positions = group["positions"] if group else [most_common_pos]
 
-    group_stats = db.query(PlayerMatchStats).filter(
-        PlayerMatchStats.puesto.in_(group_positions)
-    ).all()
+    group_stats = (
+        db.query(PlayerMatchStats)
+        .filter(PlayerMatchStats.puesto.in_(group_positions))
+        .all()
+    )
 
     from app.services.scoring import ScoringService
 

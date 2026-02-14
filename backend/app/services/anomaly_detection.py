@@ -30,7 +30,13 @@ STAT_THRESHOLDS: dict[str, int] = {
 }
 
 # Stats where an increase is bad (inverted alert logic)
-NEGATIVE_STATS = {"tackles_errados", "pases_malos", "perdidas", "penales", "recepcion_aire_mala"}
+NEGATIVE_STATS = {
+    "tackles_errados",
+    "pases_malos",
+    "perdidas",
+    "penales",
+    "recepcion_aire_mala",
+}
 
 # Number of recent matches to use for "recent" mode
 RECENT_WINDOW = 5
@@ -42,9 +48,7 @@ class AnomalyDetectionService:
     def __init__(self, db: Session):
         self.db = db
 
-    def detect_anomalies(
-        self, player_id: int, mode: str = "all"
-    ) -> dict[str, dict]:
+    def detect_anomalies(self, player_id: int, mode: str = "all") -> dict[str, dict]:
         """
         Detect stat anomalies for a player's last match.
 
@@ -85,7 +89,9 @@ class AnomalyDetectionService:
             median_all = median(history_values) if history_values else 0.0
 
             # Calculate median for recent matches (last N of history)
-            recent_history = history[-RECENT_WINDOW:] if len(history) >= RECENT_WINDOW else history
+            recent_history = (
+                history[-RECENT_WINDOW:] if len(history) >= RECENT_WINDOW else history
+            )
             recent_values = [getattr(s, stat_name, 0) or 0 for s in recent_history]
             median_recent = median(recent_values) if recent_values else 0.0
 
@@ -99,7 +105,9 @@ class AnomalyDetectionService:
                 else:
                     deviation_pct = 0.0
             else:
-                deviation_pct = ((last_value - comparison_median) / comparison_median) * 100
+                deviation_pct = (
+                    (last_value - comparison_median) / comparison_median
+                ) * 100
 
             # Determine alert
             alert = None
