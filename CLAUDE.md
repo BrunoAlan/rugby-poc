@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Rugby POC - A rugby match data analysis application with a FastAPI backend and React frontend. The system imports player performance data from Excel files, calculates position-weighted scores, and provides rankings and analytics.
+Rugby POC - A rugby match data analysis application with a FastAPI backend and React frontend. The system imports player performance data from Excel files, calculates position-weighted scores, and provides individual player analytics and AI-powered insights.
 
 ## Commands
 
@@ -76,7 +76,7 @@ main.py          # FastAPI application entry point
 ### Frontend Structure (`frontend/src/`)
 ```
 api/             # Axios API client modules
-hooks/           # React Query hooks (usePlayers, useRankings, etc.)
+hooks/           # React Query hooks (usePlayers, useMatches, etc.)
 types/           # TypeScript interfaces
 components/      # UI components by domain (players/, stats/, scoring/)
 pages/           # Route-level page components

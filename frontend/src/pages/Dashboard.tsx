@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Calendar, Users, Trophy, TrendingUp, ArrowRight, Upload } from 'lucide-react'
+import { Calendar, Users, ArrowRight, Upload } from 'lucide-react'
 import { useMatches } from '../hooks/useMatches'
 import { usePlayers } from '../hooks/usePlayers'
-import { useRankings } from '../hooks/useRankings'
 import StatsSummary from '../components/stats/StatsSummary'
-import RankingsTable from '../components/stats/RankingsTable'
 import MatchCard from '../components/matches/MatchCard'
 import AnimatedPage from '../components/ui/AnimatedPage'
 import AnimatedCard from '../components/ui/AnimatedCard'
@@ -12,7 +10,6 @@ import AnimatedCard from '../components/ui/AnimatedCard'
 export default function Dashboard() {
   const { data: matches, isLoading: matchesLoading } = useMatches()
   const { data: players, isLoading: playersLoading } = usePlayers()
-  const { data: rankings, isLoading: rankingsLoading } = useRankings({ limit: 5 })
 
   const recentMatches = matches?.slice(0, 3) || []
   const totalMatches = matches?.length || 0
@@ -33,22 +30,6 @@ export default function Dashboard() {
       color: 'border-primary-500',
       iconBg: 'from-primary-500/20 to-primary-600/10',
     },
-    {
-      label: 'Top Score',
-      value: rankings?.[0]?.puntuacion_final.toFixed(0) || '-',
-      icon: <Trophy className="h-5 w-5" />,
-      color: 'border-amber-500',
-      iconBg: 'from-amber-500/20 to-amber-600/10',
-      iconColor: 'text-amber-400',
-    },
-    {
-      label: 'Mejor Jugador',
-      value: rankings?.[0]?.player_name || '-',
-      icon: <TrendingUp className="h-5 w-5" />,
-      color: 'border-amber-500',
-      iconBg: 'from-amber-500/20 to-amber-600/10',
-      iconColor: 'text-amber-400',
-    },
   ]
 
   return (
@@ -64,59 +45,41 @@ export default function Dashboard() {
       {/* Stats Summary */}
       <StatsSummary stats={stats} loading={matchesLoading || playersLoading} />
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Top Rankings */}
-        <AnimatedCard index={0} className="card">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white">Top 5 Rankings</h2>
-            <Link
-              to="/rankings"
-              className="text-sm font-medium text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors"
-            >
-              Ver todos
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+      {/* Recent Matches */}
+      <AnimatedCard index={0} className="card">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white">Partidos Recientes</h2>
+          <Link
+            to="/matches"
+            className="text-sm font-medium text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors"
+          >
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        {matchesLoading ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="p-4 rounded-lg skeleton h-20" />
+            ))}
           </div>
-          <RankingsTable rankings={rankings || []} loading={rankingsLoading} compact />
-        </AnimatedCard>
-
-        {/* Recent Matches */}
-        <AnimatedCard index={1} className="card">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white">Partidos Recientes</h2>
-            <Link
-              to="/matches"
-              className="text-sm font-medium text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors"
-            >
-              Ver todos
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+        ) : recentMatches.length === 0 ? (
+          <div className="text-center py-8 text-dark-400">
+            No hay partidos registrados
           </div>
-          {matchesLoading ? (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 rounded-lg skeleton h-20" />
-              ))}
-            </div>
-          ) : recentMatches.length === 0 ? (
-            <div className="text-center py-8 text-dark-400">
-              No hay partidos registrados
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentMatches.map((match) => (
-                <div key={match.id} className="p-0">
-                  <MatchCard match={match} />
-                </div>
-              ))}
-            </div>
-          )}
-        </AnimatedCard>
-      </div>
+        ) : (
+          <div className="space-y-3">
+            {recentMatches.map((match) => (
+              <div key={match.id} className="p-0">
+                <MatchCard match={match} />
+              </div>
+            ))}
+          </div>
+        )}
+      </AnimatedCard>
 
       {/* Quick Actions - CTA Banner */}
-      <AnimatedCard index={2}>
+      <AnimatedCard index={1}>
         <div className="card bg-gradient-to-r from-primary-700/80 to-primary-600/60 border-primary-600/50 relative overflow-hidden">
           {/* Diagonal stripe pattern */}
           <div className="absolute inset-0 opacity-10" style={{

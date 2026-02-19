@@ -1,6 +1,6 @@
 # Rugby Statistics System
 
-A rugby match data analysis application with a FastAPI backend and React frontend. The system imports player performance data from Excel files, calculates position-weighted scores, and provides rankings, analytics, and AI-powered insights.
+A rugby match data analysis application with a FastAPI backend and React frontend. The system imports player performance data from Excel files, calculates position-weighted scores, and provides individual player analytics and AI-powered insights.
 
 ## Features
 
@@ -151,7 +151,7 @@ pnpm lint       # ESLint
 The frontend proxies `/api` requests to the backend via Vite config.
 
 ### Pages
-- **Rankings**: Player rankings table with match filter, sortable columns
+- **Dashboard**: Overview with match/player counts, recent matches, and quick import action
 - **Match Detail**: Per-match stats, AI analysis, PDF export
 - **Player Detail**: Inline-editable profile (name, weight, height), match history, score evolution chart, anomaly alerts, AI evolution analysis, position comparison, PDF export
 - **Scoring Weights**: Position-tabbed weight editor (15 tabs, one per position)

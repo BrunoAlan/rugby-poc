@@ -19,7 +19,6 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Partidos', href: '/matches', icon: Calendar },
   { name: 'Jugadores', href: '/players', icon: Users },
-  { name: 'Rankings', href: '/rankings', icon: Trophy },
   { name: 'Subir Excel', href: '/upload', icon: Upload },
   { name: 'Configuración', href: '/scoring', icon: Settings },
 ]
